@@ -6,8 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class EodigakkaBackendApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(EodigakkaBackendApplication.class, args);
-	}
-
+  public static void main(String[] args) {
+    SpringApplication.run(EodigakkaBackendApplication.class, args);
+  }
 }
