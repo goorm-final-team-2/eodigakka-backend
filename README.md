@@ -131,12 +131,13 @@ DB 스키마는 `src/main/resources/db/migration`의 Flyway SQL로 관리합니�
 
 ```text
 V1__baseline.sql
-V2__create_users.sql
-V3__create_appointments.sql
+V2__create_initial_schema.sql
+V3__{next_change}.sql
 ```
 
 - 마이그레이션 번호는 작업 시작 전에 팀 채널에서 선점합니다.
 - 이미 공유된 마이그레이션 파일은 수정하지 않고 새 번호의 파일을 추가합니다.
+- `V2__create_initial_schema.sql`은 최신 ERD 기준 초기 스키마이므로 병합 후 수정하지 않습니다.
 - 운영 환경에서 `ddl-auto=create` 또는 `ddl-auto=update`를 사용하지 않습니다.
 
 ## 브랜치 전략
