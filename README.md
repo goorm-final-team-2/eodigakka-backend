@@ -49,7 +49,9 @@ docker compose up -d
 docker compose ps
 ```
 
-Docker PostgreSQL은 호스트의 `5432` 포트를 사용합니다. PC에 설치된 PostgreSQL이 같은 포트를 사용하고 있다면 해당 서비스를 종료한 뒤 Docker Compose를 실행합니다.
+기본 호스트 포트는 Backend `8080`, PostgreSQL `5432`, Redis `6379`입니다. 기존 프로그램과 충돌하면 `.env`에서 `BACKEND_PORT`, `POSTGRES_HOST_PORT`, `REDIS_HOST_PORT`를 변경할 수 있습니다.
+
+Spring Boot를 IDE에서 직접 실행할 때 PostgreSQL 또는 Redis 호스트 포트를 변경했다면 `DB_URL`과 `REDIS_PORT`도 같은 값으로 맞춰야 합니다.
 
 Windows에서 PostgreSQL 서비스 확인:
 
@@ -68,7 +70,7 @@ Stop-Service {PostgreSQL 서비스 이름}
 Windows:
 
 ```powershell
-.\gradlew.bat bootRun
+.\gradlew bootRun
 ```
 
 macOS/Linux:
@@ -91,8 +93,8 @@ docker compose --profile full up --build -d
 | Swagger UI | `http://localhost:8080/swagger-ui.html` |
 | OpenAPI JSON | `http://localhost:8080/v3/api-docs` |
 | Health Check | `http://localhost:8080/actuator/health` |
-| PostgreSQL | `localhost:5432` |
-| Redis | `localhost:6379` |
+| PostgreSQL | `localhost:5432` (`POSTGRES_HOST_PORT`로 변경 가능) |
+| Redis | `localhost:6379` (`REDIS_HOST_PORT`로 변경 가능) |
 
 ## 테스트와 빌드
 
