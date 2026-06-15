@@ -40,11 +40,27 @@ Copy-Item .env.example .env
 
 기본 로컬 설정은 별도 수정 없이 사용할 수 있습니다. 실제 API 키와 운영 비밀값은 `.env`에만 입력하고 Git에 커밋하지 않습니다.
 
+> Docker Compose는 프로젝트 루트의 `.env`를 자동으로 읽습니다. 반면 `gradlew bootRun`과 IntelliJ는 `.env`를 자동으로 읽지 않습니다. Spring Boot를 로컬에서 직접 실행할 때 필요한 비밀값은 현재 터미널 또는 IntelliJ Run Configuration의 환경변수로 등록해야 합니다.
+
 ### 3. PostgreSQL과 Redis 실행
 
 ```bash
 docker compose up -d
 docker compose ps
+```
+
+Docker PostgreSQL은 호스트의 `5432` 포트를 사용합니다. PC에 설치된 PostgreSQL이 같은 포트를 사용하고 있다면 해당 서비스를 종료한 뒤 Docker Compose를 실행합니다.
+
+Windows에서 PostgreSQL 서비스 확인:
+
+```powershell
+Get-Service | Where-Object { $_.Name -match "postgres" }
+```
+
+관리자 PowerShell에서 서비스 일시 중지:
+
+```powershell
+Stop-Service {PostgreSQL 서비스 이름}
 ```
 
 ### 4. Spring Boot 실행
