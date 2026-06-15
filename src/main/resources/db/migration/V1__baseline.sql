@@ -1,0 +1,2 @@
+-- Baseline migration.
+-- Domain tables are added in separate migrations after ownership is assigned.
