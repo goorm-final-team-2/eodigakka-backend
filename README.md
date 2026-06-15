@@ -99,9 +99,13 @@ docker compose --profile full up --build -d
 Docker Desktop을 실행한 상태에서 수행합니다. 테스트는 Testcontainers가 별도의 PostgreSQL 17 컨테이너를 생성합니다.
 
 ```powershell
-.\gradlew.bat clean test
-.\gradlew.bat clean build
+.\gradlew spotlessApply
+.\gradlew check
 ```
+
+- `spotlessApply`: Java 코드를 팀 공통 포맷으로 자동 정리합니다.
+- `check`: 테스트와 Spotless 포맷 검사를 함께 실행합니다.
+- 서버 실행은 `.\gradlew bootRun`을 사용합니다.
 
 Docker 엔진이 꺼져 있으면 Testcontainers 테스트가 실패합니다.
 
