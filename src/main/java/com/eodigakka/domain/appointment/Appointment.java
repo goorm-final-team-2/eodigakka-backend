@@ -1,5 +1,7 @@
 package com.eodigakka.domain.appointment;
 
+import com.eodigakka.global.error.BusinessException;
+import com.eodigakka.global.error.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -99,6 +101,30 @@ public class Appointment {
         hostUserId,
         inviteCode,
         now);
+  }
+
+  public void update(
+      String title,
+      LocalDate appointmentDate,
+      LocalTime appointmentTime,
+      String description,
+      String preferredArea,
+      String notice,
+      Instant now) {
+    validatePlanning();
+    this.title = title;
+    this.appointmentDate = appointmentDate;
+    this.appointmentTime = appointmentTime;
+    this.description = description;
+    this.preferredArea = preferredArea;
+    this.notice = notice;
+    this.updatedAt = now;
+  }
+
+  public void validatePlanning() {
+    if (status != AppointmentStatus.PLANNING) {
+      throw new BusinessException(ErrorCode.APPOINTMENT_STATUS_NOT_EDITABLE);
+    }
   }
 
   public Long getId() {

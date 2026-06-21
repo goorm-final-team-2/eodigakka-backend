@@ -109,6 +109,31 @@ public class AppointmentService {
     return AppointmentResponse.from(appointment, appointmentMember.getRole());
   }
 
+  @Transactional
+  public AppointmentResponse update(
+      Long appointmentId, Long userId, AppointmentUpdateRequest request) {
+    AppointmentMember appointmentMember =
+        appointmentAccessValidator.validateHost(appointmentId, userId);
+    Appointment appointment = getAppointment(appointmentId);
+    appointment.update(
+        request.title(),
+        request.appointmentDate(),
+        request.appointmentTime(),
+        request.description(),
+        request.preferredArea(),
+        request.notice(),
+        Instant.now(clock));
+    return AppointmentResponse.from(appointment, appointmentMember.getRole());
+  }
+
+  @Transactional
+  public void delete(Long appointmentId, Long userId) {
+    appointmentAccessValidator.validateHost(appointmentId, userId);
+    Appointment appointment = getAppointment(appointmentId);
+    appointment.validatePlanning();
+    appointmentRepository.delete(appointment);
+  }
+
   private String generateUniqueInviteCode() {
     for (int attempt = 0; attempt < MAX_INVITE_CODE_GENERATION_ATTEMPTS; attempt++) {
       String inviteCode = inviteCodeGenerator.generate();
@@ -117,5 +142,11 @@ public class AppointmentService {
       }
     }
     throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
+  }
+
+  private Appointment getAppointment(Long appointmentId) {
+    return appointmentRepository
+        .findById(appointmentId)
+        .orElseThrow(() -> new BusinessException(ErrorCode.APPOINTMENT_NOT_FOUND));
   }
 }
