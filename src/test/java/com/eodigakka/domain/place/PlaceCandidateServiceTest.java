@@ -36,6 +36,8 @@ class PlaceCandidateServiceTest {
   private static final Long APPOINTMENT_ID = 10L;
   private static final Long USER_ID = 1L;
   private static final Long MEMBER_ID = 100L;
+  private static final Long OTHER_MEMBER_ID = 101L;
+  private static final Long PLACE_CANDIDATE_ID = 1000L;
   private static final String GUEST_TOKEN = "guest-token";
   private static final Instant NOW = Instant.parse("2026-06-21T00:00:00Z");
 
@@ -170,6 +172,121 @@ class PlaceCandidateServiceTest {
     assertThat(responses.getFirst().name()).isEqualTo("강남역");
   }
 
+  @Test
+  void deleteRemovesPlaceCandidateWhenRequesterAddedCandidate() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    Appointment appointment = appointment(AppointmentStatus.PLANNING);
+    AppointmentMember appointmentMember = userMember();
+    PlaceCandidate placeCandidate = placeCandidate(MEMBER_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(appointmentMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+    given(placeCandidateRepository.findByIdAndAppointmentId(PLACE_CANDIDATE_ID, APPOINTMENT_ID))
+        .willReturn(Optional.of(placeCandidate));
+
+    placeCandidateService.delete(APPOINTMENT_ID, PLACE_CANDIDATE_ID, authUser, null);
+
+    verify(placeCandidateRepository).delete(placeCandidate);
+  }
+
+  @Test
+  void deleteRemovesPlaceCandidateWhenRequesterIsHost() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    Appointment appointment = appointment(AppointmentStatus.PLANNING);
+    AppointmentMember hostMember = hostMember();
+    PlaceCandidate placeCandidate = placeCandidate(OTHER_MEMBER_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null)).willReturn(hostMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+    given(placeCandidateRepository.findByIdAndAppointmentId(PLACE_CANDIDATE_ID, APPOINTMENT_ID))
+        .willReturn(Optional.of(placeCandidate));
+
+    placeCandidateService.delete(APPOINTMENT_ID, PLACE_CANDIDATE_ID, authUser, null);
+
+    verify(placeCandidateRepository).delete(placeCandidate);
+  }
+
+  @Test
+  void deleteRemovesPlaceCandidateWhenGuestAddedCandidate() {
+    Appointment appointment = appointment(AppointmentStatus.PLANNING);
+    AppointmentMember appointmentMember = guestMember();
+    PlaceCandidate placeCandidate = placeCandidate(MEMBER_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_TOKEN))
+        .willReturn(appointmentMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+    given(placeCandidateRepository.findByIdAndAppointmentId(PLACE_CANDIDATE_ID, APPOINTMENT_ID))
+        .willReturn(Optional.of(placeCandidate));
+
+    placeCandidateService.delete(APPOINTMENT_ID, PLACE_CANDIDATE_ID, null, GUEST_TOKEN);
+
+    verify(placeCandidateRepository).delete(placeCandidate);
+  }
+
+  @Test
+  void deleteThrowsBusinessExceptionWhenRequesterDidNotAddCandidate() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    Appointment appointment = appointment(AppointmentStatus.PLANNING);
+    AppointmentMember appointmentMember = userMember();
+    PlaceCandidate placeCandidate = placeCandidate(OTHER_MEMBER_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(appointmentMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+    given(placeCandidateRepository.findByIdAndAppointmentId(PLACE_CANDIDATE_ID, APPOINTMENT_ID))
+        .willReturn(Optional.of(placeCandidate));
+
+    assertThatThrownBy(
+            () -> placeCandidateService.delete(APPOINTMENT_ID, PLACE_CANDIDATE_ID, authUser, null))
+        .isInstanceOf(BusinessException.class);
+    verify(placeCandidateRepository, never()).delete(any());
+  }
+
+  @Test
+  void deleteThrowsBusinessExceptionWhenGuestDidNotAddCandidate() {
+    Appointment appointment = appointment(AppointmentStatus.PLANNING);
+    AppointmentMember appointmentMember = guestMember();
+    PlaceCandidate placeCandidate = placeCandidate(OTHER_MEMBER_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_TOKEN))
+        .willReturn(appointmentMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+    given(placeCandidateRepository.findByIdAndAppointmentId(PLACE_CANDIDATE_ID, APPOINTMENT_ID))
+        .willReturn(Optional.of(placeCandidate));
+
+    assertThatThrownBy(
+            () ->
+                placeCandidateService.delete(APPOINTMENT_ID, PLACE_CANDIDATE_ID, null, GUEST_TOKEN))
+        .isInstanceOf(BusinessException.class);
+    verify(placeCandidateRepository, never()).delete(any());
+  }
+
+  @Test
+  void deleteThrowsBusinessExceptionWhenAppointmentIsNotPlanning() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    Appointment appointment = appointment(AppointmentStatus.CONFIRMED);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+
+    assertThatThrownBy(
+            () -> placeCandidateService.delete(APPOINTMENT_ID, PLACE_CANDIDATE_ID, authUser, null))
+        .isInstanceOf(BusinessException.class);
+    verify(placeCandidateRepository, never()).delete(any());
+  }
+
+  @Test
+  void deleteThrowsBusinessExceptionWhenPlaceCandidateDoesNotExist() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    Appointment appointment = appointment(AppointmentStatus.PLANNING);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+    given(placeCandidateRepository.findByIdAndAppointmentId(PLACE_CANDIDATE_ID, APPOINTMENT_ID))
+        .willReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () -> placeCandidateService.delete(APPOINTMENT_ID, PLACE_CANDIDATE_ID, authUser, null))
+        .isInstanceOf(BusinessException.class);
+    verify(placeCandidateRepository, never()).delete(any());
+  }
+
   private PlaceCandidateCreateRequest createRequest() {
     return new PlaceCandidateCreateRequest(
         "12345",
@@ -207,6 +324,13 @@ class PlaceCandidateServiceTest {
     return appointmentMember;
   }
 
+  private AppointmentMember hostMember() {
+    AppointmentMember appointmentMember =
+        AppointmentMember.createHost(APPOINTMENT_ID, USER_ID, NOW);
+    ReflectionTestUtils.setField(appointmentMember, "id", MEMBER_ID);
+    return appointmentMember;
+  }
+
   private AppointmentMember guestMember() {
     AppointmentMember appointmentMember =
         AppointmentMember.createGuest(APPOINTMENT_ID, "guest", "guest-token-hash", NOW);
@@ -215,6 +339,10 @@ class PlaceCandidateServiceTest {
   }
 
   private PlaceCandidate placeCandidate() {
+    return placeCandidate(MEMBER_ID);
+  }
+
+  private PlaceCandidate placeCandidate(Long addedByMemberId) {
     return PlaceCandidate.create(
         APPOINTMENT_ID,
         "12345",
@@ -226,7 +354,7 @@ class PlaceCandidateServiceTest {
         "02-123-4567",
         37.4979,
         127.0276,
-        MEMBER_ID,
+        addedByMemberId,
         NOW);
   }
 }

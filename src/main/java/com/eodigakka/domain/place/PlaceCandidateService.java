@@ -90,6 +90,25 @@ public class PlaceCandidateService {
         .toList();
   }
 
+  @Transactional
+  public void delete(
+      Long appointmentId, Long placeCandidateId, AuthUser authUser, String guestToken) {
+    AppointmentMember appointmentMember =
+        appointmentMemberResolver.resolve(appointmentId, authUser, guestToken);
+    Appointment appointment = getAppointment(appointmentId);
+    appointment.validatePlanning();
+    PlaceCandidate placeCandidate =
+        placeCandidateRepository
+            .findByIdAndAppointmentId(placeCandidateId, appointmentId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.PLACE_CANDIDATE_NOT_FOUND));
+
+    if (!appointmentMember.isHost() && !placeCandidate.isAddedBy(appointmentMember.getId())) {
+      throw new BusinessException(ErrorCode.PLACE_CANDIDATE_DELETE_DENIED);
+    }
+
+    placeCandidateRepository.delete(placeCandidate);
+  }
+
   private Appointment getAppointment(Long appointmentId) {
     return appointmentRepository
         .findById(appointmentId)
