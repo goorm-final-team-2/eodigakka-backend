@@ -14,6 +14,10 @@ public enum ErrorCode {
   AUTH_REDIRECT_URI_NOT_ALLOWED(
       HttpStatus.BAD_REQUEST, "AUTH_REDIRECT_URI_NOT_ALLOWED", "허용되지 않은 redirectUri입니다."),
   USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
+  APPOINTMENT_MEMBER_NOT_FOUND(
+      HttpStatus.FORBIDDEN, "APPOINTMENT_MEMBER_NOT_FOUND", "약속방 참여자를 찾을 수 없습니다."),
+  APPOINTMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "APPOINTMENT_ACCESS_DENIED", "약속방 접근 권한이 없습니다."),
+  APPOINTMENT_HOST_REQUIRED(HttpStatus.FORBIDDEN, "APPOINTMENT_HOST_REQUIRED", "약속방 방장 권한이 필요합니다."),
   INTERNAL_SERVER_ERROR(
       HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 오류가 발생했습니다.");
 
