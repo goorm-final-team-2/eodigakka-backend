@@ -2,6 +2,7 @@ package com.eodigakka.global.config;
 
 import com.eodigakka.global.security.CustomAccessDeniedHandler;
 import com.eodigakka.global.security.CustomAuthenticationEntryPoint;
+import com.eodigakka.global.security.GuestAuthenticationFilter;
 import com.eodigakka.global.security.JwtAuthenticationFilter;
 import java.util.Arrays;
 import java.util.List;
@@ -22,14 +23,17 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final GuestAuthenticationFilter guestAuthenticationFilter;
   private final CustomAuthenticationEntryPoint authenticationEntryPoint;
   private final CustomAccessDeniedHandler accessDeniedHandler;
 
   public SecurityConfig(
       JwtAuthenticationFilter jwtAuthenticationFilter,
+      GuestAuthenticationFilter guestAuthenticationFilter,
       CustomAuthenticationEntryPoint authenticationEntryPoint,
       CustomAccessDeniedHandler accessDeniedHandler) {
     this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    this.guestAuthenticationFilter = guestAuthenticationFilter;
     this.authenticationEntryPoint = authenticationEntryPoint;
     this.accessDeniedHandler = accessDeniedHandler;
   }
@@ -60,25 +64,10 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/appointments/guests")
                     .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/appointments/*/place-candidates")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/appointments/*/place-candidates")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.DELETE, "/api/appointments/*/place-candidates/*")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.PUT, "/api/appointments/*/votes")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/appointments/*/votes/results")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/appointments/*/confirmed-place")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.PUT, "/api/appointments/*/locations/me")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/appointments/*/locations")
-                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterAfter(guestAuthenticationFilter, JwtAuthenticationFilter.class)
         .build();
   }
 
