@@ -2,6 +2,7 @@ package com.eodigakka.domain.appointment;
 
 import com.eodigakka.global.error.BusinessException;
 import com.eodigakka.global.error.ErrorCode;
+import com.eodigakka.global.security.MessageDigestSupport;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Comparator;
@@ -22,6 +23,7 @@ public class AppointmentService {
   private final AppointmentMemberRepository appointmentMemberRepository;
   private final AppointmentAccessValidator appointmentAccessValidator;
   private final InviteCodeGenerator inviteCodeGenerator;
+  private final GuestTokenGenerator guestTokenGenerator;
   private final Clock clock;
 
   @Autowired
@@ -29,12 +31,14 @@ public class AppointmentService {
       AppointmentRepository appointmentRepository,
       AppointmentMemberRepository appointmentMemberRepository,
       AppointmentAccessValidator appointmentAccessValidator,
-      InviteCodeGenerator inviteCodeGenerator) {
+      InviteCodeGenerator inviteCodeGenerator,
+      GuestTokenGenerator guestTokenGenerator) {
     this(
         appointmentRepository,
         appointmentMemberRepository,
         appointmentAccessValidator,
         inviteCodeGenerator,
+        guestTokenGenerator,
         Clock.systemUTC());
   }
 
@@ -43,11 +47,13 @@ public class AppointmentService {
       AppointmentMemberRepository appointmentMemberRepository,
       AppointmentAccessValidator appointmentAccessValidator,
       InviteCodeGenerator inviteCodeGenerator,
+      GuestTokenGenerator guestTokenGenerator,
       Clock clock) {
     this.appointmentRepository = appointmentRepository;
     this.appointmentMemberRepository = appointmentMemberRepository;
     this.appointmentAccessValidator = appointmentAccessValidator;
     this.inviteCodeGenerator = inviteCodeGenerator;
+    this.guestTokenGenerator = guestTokenGenerator;
     this.clock = clock;
   }
 
@@ -124,6 +130,33 @@ public class AppointmentService {
         .orElseGet(() -> joinAsMember(appointment, userId));
   }
 
+  @Transactional(readOnly = true)
+  public AppointmentInvitePreviewResponse findInvitePreview(String inviteCode) {
+    Appointment appointment = getAppointmentByInviteCode(inviteCode);
+    appointment.validateJoinable();
+    return AppointmentInvitePreviewResponse.from(appointment);
+  }
+
+  @Transactional
+  public GuestJoinResponse joinAsGuest(GuestJoinRequest request) {
+    Appointment appointment = getAppointmentByInviteCode(request.inviteCode());
+    appointment.validateJoinable();
+    if (appointmentMemberRepository.existsByAppointmentIdAndGuestName(
+        appointment.getId(), request.guestName())) {
+      throw new BusinessException(ErrorCode.GUEST_NAME_ALREADY_EXISTS);
+    }
+
+    String guestToken = guestTokenGenerator.generate();
+    AppointmentMember appointmentMember =
+        appointmentMemberRepository.save(
+            AppointmentMember.createGuest(
+                appointment.getId(),
+                request.guestName(),
+                MessageDigestSupport.sha256Hex(guestToken),
+                Instant.now(clock)));
+    return GuestJoinResponse.of(appointment, appointmentMember, guestToken);
+  }
+
   @Transactional
   public AppointmentResponse update(
       Long appointmentId, Long userId, AppointmentUpdateRequest request) {
@@ -163,6 +196,12 @@ public class AppointmentService {
     return appointmentRepository
         .findById(appointmentId)
         .orElseThrow(() -> new BusinessException(ErrorCode.APPOINTMENT_NOT_FOUND));
+  }
+
+  private Appointment getAppointmentByInviteCode(String inviteCode) {
+    return appointmentRepository
+        .findByInviteCode(inviteCode)
+        .orElseThrow(() -> new BusinessException(ErrorCode.APPOINTMENT_INVITE_CODE_NOT_FOUND));
   }
 
   private AppointmentResponse joinAsMember(Appointment appointment, Long userId) {

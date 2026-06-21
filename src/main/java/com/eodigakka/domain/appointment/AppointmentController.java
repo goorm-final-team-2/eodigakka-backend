@@ -41,6 +41,17 @@ public class AppointmentController {
     return ApiResponse.success(appointmentService.findMyAppointments(authUser.userId()));
   }
 
+  @GetMapping("/invite/{inviteCode}")
+  public ApiResponse<AppointmentInvitePreviewResponse> findInvitePreview(
+      @PathVariable String inviteCode) {
+    return ApiResponse.success(appointmentService.findInvitePreview(inviteCode));
+  }
+
+  @PostMapping("/guests")
+  public ApiResponse<GuestJoinResponse> joinAsGuest(@Valid @RequestBody GuestJoinRequest request) {
+    return ApiResponse.success(appointmentService.joinAsGuest(request));
+  }
+
   @GetMapping("/{appointmentId}")
   public ApiResponse<AppointmentResponse> findById(
       @AuthenticationPrincipal AuthUser authUser, @PathVariable Long appointmentId) {

@@ -9,4 +9,6 @@ public interface AppointmentMemberRepository extends JpaRepository<AppointmentMe
   Optional<AppointmentMember> findByAppointmentIdAndUserId(Long appointmentId, Long userId);
 
   List<AppointmentMember> findByUserId(Long userId);
+
+  boolean existsByAppointmentIdAndGuestName(Long appointmentId, String guestName);
 }
