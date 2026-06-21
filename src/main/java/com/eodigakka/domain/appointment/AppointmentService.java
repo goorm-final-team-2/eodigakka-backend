@@ -110,6 +110,21 @@ public class AppointmentService {
   }
 
   @Transactional
+  public AppointmentResponse join(Long userId, AppointmentJoinRequest request) {
+    Appointment appointment =
+        appointmentRepository
+            .findByInviteCode(request.inviteCode())
+            .orElseThrow(() -> new BusinessException(ErrorCode.APPOINTMENT_INVITE_CODE_NOT_FOUND));
+    appointment.validateJoinable();
+
+    return appointmentMemberRepository
+        .findByAppointmentIdAndUserId(appointment.getId(), userId)
+        .map(
+            appointmentMember -> AppointmentResponse.from(appointment, appointmentMember.getRole()))
+        .orElseGet(() -> joinAsMember(appointment, userId));
+  }
+
+  @Transactional
   public AppointmentResponse update(
       Long appointmentId, Long userId, AppointmentUpdateRequest request) {
     AppointmentMember appointmentMember =
@@ -148,5 +163,12 @@ public class AppointmentService {
     return appointmentRepository
         .findById(appointmentId)
         .orElseThrow(() -> new BusinessException(ErrorCode.APPOINTMENT_NOT_FOUND));
+  }
+
+  private AppointmentResponse joinAsMember(Appointment appointment, Long userId) {
+    AppointmentMember appointmentMember =
+        appointmentMemberRepository.save(
+            AppointmentMember.createMember(appointment.getId(), userId, Instant.now(clock)));
+    return AppointmentResponse.from(appointment, appointmentMember.getRole());
   }
 }

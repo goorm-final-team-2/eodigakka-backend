@@ -47,6 +47,13 @@ public class AppointmentController {
     return ApiResponse.success(appointmentService.findById(appointmentId, authUser.userId()));
   }
 
+  @PostMapping("/join")
+  public ApiResponse<AppointmentResponse> join(
+      @AuthenticationPrincipal AuthUser authUser,
+      @Valid @RequestBody AppointmentJoinRequest request) {
+    return ApiResponse.success(appointmentService.join(authUser.userId(), request));
+  }
+
   @PatchMapping("/{appointmentId}")
   public ApiResponse<AppointmentResponse> update(
       @AuthenticationPrincipal AuthUser authUser,

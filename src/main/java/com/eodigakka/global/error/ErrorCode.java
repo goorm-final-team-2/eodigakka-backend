@@ -21,6 +21,9 @@ public enum ErrorCode {
   APPOINTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "APPOINTMENT_NOT_FOUND", "약속방을 찾을 수 없습니다."),
   APPOINTMENT_STATUS_NOT_EDITABLE(
       HttpStatus.BAD_REQUEST, "APPOINTMENT_STATUS_NOT_EDITABLE", "현재 상태에서는 약속방을 수정하거나 삭제할 수 없습니다."),
+  APPOINTMENT_INVITE_CODE_NOT_FOUND(
+      HttpStatus.NOT_FOUND, "APPOINTMENT_INVITE_CODE_NOT_FOUND", "초대 코드에 해당하는 약속방을 찾을 수 없습니다."),
+  APPOINTMENT_NOT_JOINABLE(HttpStatus.BAD_REQUEST, "APPOINTMENT_NOT_JOINABLE", "참여할 수 없는 약속방입니다."),
   INTERNAL_SERVER_ERROR(
       HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 오류가 발생했습니다.");
 
