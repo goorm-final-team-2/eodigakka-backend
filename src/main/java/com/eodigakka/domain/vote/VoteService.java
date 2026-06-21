@@ -4,12 +4,17 @@ import com.eodigakka.domain.appointment.Appointment;
 import com.eodigakka.domain.appointment.AppointmentMember;
 import com.eodigakka.domain.appointment.AppointmentMemberResolver;
 import com.eodigakka.domain.appointment.AppointmentRepository;
+import com.eodigakka.domain.place.PlaceCandidate;
 import com.eodigakka.domain.place.PlaceCandidateRepository;
 import com.eodigakka.global.error.BusinessException;
 import com.eodigakka.global.error.ErrorCode;
 import com.eodigakka.global.security.AuthUser;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,6 +77,33 @@ public class VoteService {
                             appointmentMember.getId(),
                             Instant.now(clock))));
     return VoteResponse.from(vote);
+  }
+
+  @Transactional(readOnly = true)
+  public List<VoteResultResponse> findResults(
+      Long appointmentId, AuthUser authUser, String guestToken) {
+    AppointmentMember appointmentMember =
+        appointmentMemberResolver.resolve(appointmentId, authUser, guestToken);
+    getAppointment(appointmentId);
+
+    List<PlaceCandidate> placeCandidates =
+        placeCandidateRepository.findByAppointmentIdOrderByCreatedAtAscIdAsc(appointmentId);
+    Map<Long, Long> voteCountByPlaceCandidateId =
+        voteRepository.findByAppointmentId(appointmentId).stream()
+            .collect(Collectors.groupingBy(Vote::getPlaceCandidateId, Collectors.counting()));
+    Optional<Long> votedPlaceCandidateId =
+        voteRepository
+            .findByAppointmentIdAndMemberId(appointmentId, appointmentMember.getId())
+            .map(Vote::getPlaceCandidateId);
+
+    return placeCandidates.stream()
+        .map(
+            placeCandidate ->
+                new VoteResultResponse(
+                    placeCandidate.getId(),
+                    voteCountByPlaceCandidateId.getOrDefault(placeCandidate.getId(), 0L),
+                    votedPlaceCandidateId.filter(placeCandidate.getId()::equals).isPresent()))
+        .toList();
   }
 
   private Vote changeVote(Vote vote, Long placeCandidateId) {
