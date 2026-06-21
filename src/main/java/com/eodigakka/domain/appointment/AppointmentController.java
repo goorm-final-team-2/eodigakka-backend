@@ -1,0 +1,47 @@
+package com.eodigakka.domain.appointment;
+
+import com.eodigakka.global.response.ApiResponse;
+import com.eodigakka.global.security.AuthUser;
+import jakarta.validation.Valid;
+import java.net.URI;
+import java.util.List;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/appointments")
+public class AppointmentController {
+
+  private final AppointmentService appointmentService;
+
+  public AppointmentController(AppointmentService appointmentService) {
+    this.appointmentService = appointmentService;
+  }
+
+  @PostMapping
+  public ResponseEntity<ApiResponse<AppointmentResponse>> create(
+      @AuthenticationPrincipal AuthUser authUser,
+      @Valid @RequestBody AppointmentCreateRequest request) {
+    AppointmentResponse response = appointmentService.create(authUser.userId(), request);
+    return ResponseEntity.created(URI.create("/api/appointments/" + response.id()))
+        .body(ApiResponse.success(response));
+  }
+
+  @GetMapping
+  public ApiResponse<List<AppointmentResponse>> findMyAppointments(
+      @AuthenticationPrincipal AuthUser authUser) {
+    return ApiResponse.success(appointmentService.findMyAppointments(authUser.userId()));
+  }
+
+  @GetMapping("/{appointmentId}")
+  public ApiResponse<AppointmentResponse> findById(
+      @AuthenticationPrincipal AuthUser authUser, @PathVariable Long appointmentId) {
+    return ApiResponse.success(appointmentService.findById(appointmentId, authUser.userId()));
+  }
+}
