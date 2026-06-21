@@ -1,5 +1,8 @@
 package com.eodigakka.global.config;
 
+import com.eodigakka.global.security.CustomAccessDeniedHandler;
+import com.eodigakka.global.security.CustomAuthenticationEntryPoint;
+import com.eodigakka.global.security.JwtAuthenticationFilter;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +13,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -17,12 +21,30 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 public class SecurityConfig {
 
+  private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+  private final CustomAccessDeniedHandler accessDeniedHandler;
+
+  public SecurityConfig(
+      JwtAuthenticationFilter jwtAuthenticationFilter,
+      CustomAuthenticationEntryPoint authenticationEntryPoint,
+      CustomAccessDeniedHandler accessDeniedHandler) {
+    this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    this.authenticationEntryPoint = authenticationEntryPoint;
+    this.accessDeniedHandler = accessDeniedHandler;
+  }
+
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     return http.csrf(csrf -> csrf.disable())
         .cors(Customizer.withDefaults())
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(
+            exception ->
+                exception
+                    .authenticationEntryPoint(authenticationEntryPoint)
+                    .accessDeniedHandler(accessDeniedHandler))
         .authorizeHttpRequests(
             authorize ->
                 authorize
@@ -31,9 +53,12 @@ public class SecurityConfig {
                     .requestMatchers(
                         "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/health")
                     .permitAll()
-                    // JWT authentication is applied in the authentication feature branch.
+                    .requestMatchers(
+                        HttpMethod.POST, "/api/auth/kakao", "/api/auth/refresh", "/api/auth/logout")
+                    .permitAll()
                     .anyRequest()
-                    .permitAll())
+                    .authenticated())
+        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
         .build();
   }
 

@@ -7,6 +7,13 @@ public enum ErrorCode {
   UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다."),
   FORBIDDEN(HttpStatus.FORBIDDEN, "FORBIDDEN", "요청 권한이 없습니다."),
   RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "요청한 리소스를 찾을 수 없습니다."),
+  AUTH_KAKAO_FAILED(HttpStatus.UNAUTHORIZED, "AUTH_KAKAO_FAILED", "카카오 로그인에 실패했습니다."),
+  AUTH_INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_INVALID_TOKEN", "인증 토큰이 올바르지 않습니다."),
+  AUTH_REFRESH_TOKEN_INVALID(
+      HttpStatus.UNAUTHORIZED, "AUTH_REFRESH_TOKEN_INVALID", "Refresh Token이 올바르지 않습니다."),
+  AUTH_REDIRECT_URI_NOT_ALLOWED(
+      HttpStatus.BAD_REQUEST, "AUTH_REDIRECT_URI_NOT_ALLOWED", "허용되지 않은 redirectUri입니다."),
+  USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
   INTERNAL_SERVER_ERROR(
       HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 오류가 발생했습니다.");
 

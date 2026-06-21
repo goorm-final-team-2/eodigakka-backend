@@ -31,3 +31,20 @@ springdoc:
 app:
   cors:
     allowed-origins: ${FRONTEND_ORIGINS:http://localhost:5173}
+  auth:
+    jwt:
+      secret: ${JWT_SECRET:local-development-jwt-secret-change-me}
+      access-token-expiration-seconds: ${JWT_ACCESS_TOKEN_EXPIRATION_SECONDS:1800}
+      refresh-token-expiration-seconds: ${JWT_REFRESH_TOKEN_EXPIRATION_SECONDS:1209600}
+    refresh-cookie:
+      name: refreshToken
+      path: /api/auth
+      secure: ${APP_COOKIE_SECURE:false}
+      same-site: Lax
+  oauth:
+    kakao:
+      rest-api-key: ${KAKAO_REST_API_KEY:}
+      client-secret: ${KAKAO_CLIENT_SECRET:}
+      token-uri: https://kauth.kakao.com/oauth/token
+      user-info-uri: https://kapi.kakao.com/v2/user/me
+      allowed-redirect-uris: ${KAKAO_ALLOWED_REDIRECT_URIS:http://localhost:5173/oauth/kakao/callback}

@@ -12,3 +12,8 @@ logging:
   level:
     root: info
     com.eodigakka: info
+
+app:
+  auth:
+    jwt:
+      secret: ${JWT_SECRET}
