@@ -365,6 +365,59 @@ class AppointmentServiceTest {
         .isInstanceOf(BusinessException.class);
   }
 
+  @Test
+  void closeChangesAppointmentStatusToClosedWhenUserIsHostAndAppointmentIsConfirmed() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    ReflectionTestUtils.setField(appointment, "status", AppointmentStatus.CONFIRMED);
+    AppointmentMember hostMember =
+        AppointmentMember.createUserMember(
+            APPOINTMENT_ID, USER_ID, AppointmentMemberRole.HOST, NOW);
+    given(appointmentAccessValidator.validateHost(APPOINTMENT_ID, USER_ID)).willReturn(hostMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+
+    AppointmentResponse response = appointmentService.close(APPOINTMENT_ID, USER_ID);
+
+    assertThat(response.status()).isEqualTo(AppointmentStatus.CLOSED);
+    assertThat(response.role()).isEqualTo(AppointmentMemberRole.HOST);
+    assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CLOSED);
+  }
+
+  @Test
+  void closeThrowsBusinessExceptionWhenUserIsNotHost() {
+    given(appointmentAccessValidator.validateHost(APPOINTMENT_ID, USER_ID))
+        .willThrow(new BusinessException(ErrorCode.APPOINTMENT_HOST_REQUIRED));
+
+    assertThatThrownBy(() -> appointmentService.close(APPOINTMENT_ID, USER_ID))
+        .isInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  void closeThrowsBusinessExceptionWhenAppointmentIsPlanning() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    AppointmentMember hostMember =
+        AppointmentMember.createUserMember(
+            APPOINTMENT_ID, USER_ID, AppointmentMemberRole.HOST, NOW);
+    given(appointmentAccessValidator.validateHost(APPOINTMENT_ID, USER_ID)).willReturn(hostMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+
+    assertThatThrownBy(() -> appointmentService.close(APPOINTMENT_ID, USER_ID))
+        .isInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  void closeThrowsBusinessExceptionWhenAppointmentIsAlreadyClosed() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    ReflectionTestUtils.setField(appointment, "status", AppointmentStatus.CLOSED);
+    AppointmentMember hostMember =
+        AppointmentMember.createUserMember(
+            APPOINTMENT_ID, USER_ID, AppointmentMemberRole.HOST, NOW);
+    given(appointmentAccessValidator.validateHost(APPOINTMENT_ID, USER_ID)).willReturn(hostMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+
+    assertThatThrownBy(() -> appointmentService.close(APPOINTMENT_ID, USER_ID))
+        .isInstanceOf(BusinessException.class);
+  }
+
   private AppointmentCreateRequest createRequest() {
     return new AppointmentCreateRequest(
         "강남 저녁 약속", LocalDate.of(2026, 7, 1), LocalTime.of(19, 0), "저녁 먹을 장소 정하기", "강남역", "늦지 않기");

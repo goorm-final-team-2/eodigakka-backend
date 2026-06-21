@@ -127,6 +127,12 @@ public class Appointment {
     this.updatedAt = now;
   }
 
+  public void close(Instant now) {
+    validateConfirmed();
+    this.status = AppointmentStatus.CLOSED;
+    this.updatedAt = now;
+  }
+
   public void validatePlanning() {
     if (status != AppointmentStatus.PLANNING) {
       throw new BusinessException(ErrorCode.APPOINTMENT_STATUS_NOT_EDITABLE);

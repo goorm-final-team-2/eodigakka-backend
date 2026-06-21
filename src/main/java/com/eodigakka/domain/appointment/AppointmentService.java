@@ -182,6 +182,15 @@ public class AppointmentService {
     appointmentRepository.delete(appointment);
   }
 
+  @Transactional
+  public AppointmentResponse close(Long appointmentId, Long userId) {
+    AppointmentMember appointmentMember =
+        appointmentAccessValidator.validateHost(appointmentId, userId);
+    Appointment appointment = getAppointment(appointmentId);
+    appointment.close(Instant.now(clock));
+    return AppointmentResponse.from(appointment, appointmentMember.getRole());
+  }
+
   private String generateUniqueInviteCode() {
     for (int attempt = 0; attempt < MAX_INVITE_CODE_GENERATION_ATTEMPTS; attempt++) {
       String inviteCode = inviteCodeGenerator.generate();
