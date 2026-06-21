@@ -127,6 +127,12 @@ public class Appointment {
     }
   }
 
+  public void validateJoinable() {
+    if (status == AppointmentStatus.CLOSED) {
+      throw new BusinessException(ErrorCode.APPOINTMENT_NOT_JOINABLE);
+    }
+  }
+
   public Long getId() {
     return id;
   }
