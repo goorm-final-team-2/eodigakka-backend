@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -190,6 +191,76 @@ class VoteServiceTest {
     assertThatThrownBy(() -> voteService.vote(APPOINTMENT_ID, authUser, null, request))
         .isInstanceOf(BusinessException.class);
     verify(voteRepository, never()).save(any());
+  }
+
+  @Test
+  void findResultsReturnsVoteCountAndVotedByMeForEachPlaceCandidate() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    PlaceCandidate firstCandidate = placeCandidate(PLACE_CANDIDATE_ID);
+    PlaceCandidate secondCandidate = placeCandidate(OTHER_PLACE_CANDIDATE_ID);
+    Vote myVote = vote(PLACE_CANDIDATE_ID);
+    Vote otherVote = Vote.create(APPOINTMENT_ID, PLACE_CANDIDATE_ID, 200L, NOW);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID))
+        .willReturn(Optional.of(appointment(AppointmentStatus.CONFIRMED)));
+    given(placeCandidateRepository.findByAppointmentIdOrderByCreatedAtAscIdAsc(APPOINTMENT_ID))
+        .willReturn(List.of(firstCandidate, secondCandidate));
+    given(voteRepository.findByAppointmentId(APPOINTMENT_ID))
+        .willReturn(List.of(myVote, otherVote));
+    given(voteRepository.findByAppointmentIdAndMemberId(APPOINTMENT_ID, MEMBER_ID))
+        .willReturn(Optional.of(myVote));
+
+    List<VoteResultResponse> responses = voteService.findResults(APPOINTMENT_ID, authUser, null);
+
+    assertThat(responses).hasSize(2);
+    assertThat(responses.getFirst().placeCandidateId()).isEqualTo(PLACE_CANDIDATE_ID);
+    assertThat(responses.getFirst().voteCount()).isEqualTo(2);
+    assertThat(responses.getFirst().votedByMe()).isTrue();
+    assertThat(responses.get(1).placeCandidateId()).isEqualTo(OTHER_PLACE_CANDIDATE_ID);
+    assertThat(responses.get(1).voteCount()).isZero();
+    assertThat(responses.get(1).votedByMe()).isFalse();
+  }
+
+  @Test
+  void findResultsReturnsVoteResultsWhenGuestIsAppointmentMember() {
+    PlaceCandidate placeCandidate = placeCandidate(PLACE_CANDIDATE_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_TOKEN))
+        .willReturn(guestMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID))
+        .willReturn(Optional.of(appointment(AppointmentStatus.CLOSED)));
+    given(placeCandidateRepository.findByAppointmentIdOrderByCreatedAtAscIdAsc(APPOINTMENT_ID))
+        .willReturn(List.of(placeCandidate));
+    given(voteRepository.findByAppointmentId(APPOINTMENT_ID)).willReturn(List.of());
+    given(voteRepository.findByAppointmentIdAndMemberId(APPOINTMENT_ID, MEMBER_ID))
+        .willReturn(Optional.empty());
+
+    List<VoteResultResponse> responses = voteService.findResults(APPOINTMENT_ID, null, GUEST_TOKEN);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.getFirst().voteCount()).isZero();
+    assertThat(responses.getFirst().votedByMe()).isFalse();
+  }
+
+  @Test
+  void findResultsThrowsBusinessExceptionWhenRequesterIsNotAppointmentMember() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willThrow(new BusinessException(ErrorCode.APPOINTMENT_MEMBER_NOT_FOUND));
+
+    assertThatThrownBy(() -> voteService.findResults(APPOINTMENT_ID, authUser, null))
+        .isInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  void findResultsThrowsBusinessExceptionWhenAppointmentDoesNotExist() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.empty());
+
+    assertThatThrownBy(() -> voteService.findResults(APPOINTMENT_ID, authUser, null))
+        .isInstanceOf(BusinessException.class);
   }
 
   private Appointment appointment(AppointmentStatus status) {

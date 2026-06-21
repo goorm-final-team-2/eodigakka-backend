@@ -3,7 +3,9 @@ package com.eodigakka.domain.vote;
 import com.eodigakka.global.response.ApiResponse;
 import com.eodigakka.global.security.AuthUser;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,5 +32,13 @@ public class VoteController {
       @RequestHeader(name = GUEST_TOKEN_HEADER, required = false) String guestToken,
       @Valid @RequestBody VoteRequest request) {
     return ApiResponse.success(voteService.vote(appointmentId, authUser, guestToken, request));
+  }
+
+  @GetMapping("/results")
+  public ApiResponse<List<VoteResultResponse>> findResults(
+      @PathVariable Long appointmentId,
+      @AuthenticationPrincipal AuthUser authUser,
+      @RequestHeader(name = GUEST_TOKEN_HEADER, required = false) String guestToken) {
+    return ApiResponse.success(voteService.findResults(appointmentId, authUser, guestToken));
   }
 }
