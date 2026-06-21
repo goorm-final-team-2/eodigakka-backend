@@ -139,6 +139,12 @@ public class Appointment {
     }
   }
 
+  public void validateConfirmed() {
+    if (status != AppointmentStatus.CONFIRMED) {
+      throw new BusinessException(ErrorCode.APPOINTMENT_STATUS_NOT_EDITABLE);
+    }
+  }
+
   public Long getId() {
     return id;
   }
