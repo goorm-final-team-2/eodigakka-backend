@@ -31,6 +31,7 @@ public enum ErrorCode {
   PLACE_CANDIDATE_NOT_FOUND(HttpStatus.NOT_FOUND, "PLACE_CANDIDATE_NOT_FOUND", "장소 후보를 찾을 수 없습니다."),
   PLACE_CANDIDATE_DELETE_DENIED(
       HttpStatus.FORBIDDEN, "PLACE_CANDIDATE_DELETE_DENIED", "장소 후보 삭제 권한이 없습니다."),
+  CONFIRMED_PLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "CONFIRMED_PLACE_NOT_FOUND", "확정 장소를 찾을 수 없습니다."),
   INTERNAL_SERVER_ERROR(
       HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 오류가 발생했습니다.");
 
