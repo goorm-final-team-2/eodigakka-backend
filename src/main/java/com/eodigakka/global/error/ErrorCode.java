@@ -26,6 +26,8 @@ public enum ErrorCode {
   APPOINTMENT_NOT_JOINABLE(HttpStatus.BAD_REQUEST, "APPOINTMENT_NOT_JOINABLE", "참여할 수 없는 약속방입니다."),
   GUEST_NAME_ALREADY_EXISTS(
       HttpStatus.CONFLICT, "GUEST_NAME_ALREADY_EXISTS", "이미 사용 중인 게스트 이름입니다."),
+  PLACE_CANDIDATE_ALREADY_EXISTS(
+      HttpStatus.CONFLICT, "PLACE_CANDIDATE_ALREADY_EXISTS", "이미 추가된 장소 후보입니다."),
   INTERNAL_SERVER_ERROR(
       HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 오류가 발생했습니다.");
 
