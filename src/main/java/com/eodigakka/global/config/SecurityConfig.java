@@ -64,6 +64,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/appointments/*/place-candidates")
                     .permitAll()
+                    .requestMatchers(HttpMethod.DELETE, "/api/appointments/*/place-candidates/*")
+                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

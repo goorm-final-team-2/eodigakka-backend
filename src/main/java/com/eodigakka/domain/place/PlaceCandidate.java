@@ -157,6 +157,10 @@ public class PlaceCandidate {
     return addedByMemberId;
   }
 
+  public boolean isAddedBy(Long memberId) {
+    return addedByMemberId.equals(memberId);
+  }
+
   public Instant getCreatedAt() {
     return createdAt;
   }

@@ -7,6 +7,7 @@ import java.net.URI;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,5 +47,15 @@ public class PlaceCandidateController {
       @AuthenticationPrincipal AuthUser authUser,
       @RequestHeader(name = GUEST_TOKEN_HEADER, required = false) String guestToken) {
     return ApiResponse.success(placeCandidateService.findAll(appointmentId, authUser, guestToken));
+  }
+
+  @DeleteMapping("/{placeCandidateId}")
+  public ApiResponse<Void> delete(
+      @PathVariable Long appointmentId,
+      @PathVariable Long placeCandidateId,
+      @AuthenticationPrincipal AuthUser authUser,
+      @RequestHeader(name = GUEST_TOKEN_HEADER, required = false) String guestToken) {
+    placeCandidateService.delete(appointmentId, placeCandidateId, authUser, guestToken);
+    return ApiResponse.success();
   }
 }
