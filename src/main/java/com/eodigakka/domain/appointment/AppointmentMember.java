@@ -54,6 +54,10 @@ public class AppointmentMember {
     return appointmentMember;
   }
 
+  public static AppointmentMember createHost(Long appointmentId, Long userId, Instant joinedAt) {
+    return createUserMember(appointmentId, userId, AppointmentMemberRole.HOST, joinedAt);
+  }
+
   public Long getId() {
     return id;
   }
