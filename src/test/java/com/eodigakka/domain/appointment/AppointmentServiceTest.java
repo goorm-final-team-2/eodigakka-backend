@@ -135,9 +135,106 @@ class AppointmentServiceTest {
         .isInstanceOf(BusinessException.class);
   }
 
+  @Test
+  void updateChangesAppointmentWhenUserIsHostAndAppointmentIsPlanning() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    AppointmentMember hostMember =
+        AppointmentMember.createUserMember(
+            APPOINTMENT_ID, USER_ID, AppointmentMemberRole.HOST, NOW);
+    AppointmentUpdateRequest request =
+        new AppointmentUpdateRequest(
+            "홍대 점심 약속",
+            LocalDate.of(2026, 7, 2),
+            LocalTime.of(12, 30),
+            "점심 먹을 장소 정하기",
+            "홍대입구역",
+            "우산 챙기기");
+    given(appointmentAccessValidator.validateHost(APPOINTMENT_ID, USER_ID)).willReturn(hostMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+
+    AppointmentResponse response = appointmentService.update(APPOINTMENT_ID, USER_ID, request);
+
+    assertThat(response.title()).isEqualTo("홍대 점심 약속");
+    assertThat(response.appointmentDate()).isEqualTo(LocalDate.of(2026, 7, 2));
+    assertThat(response.appointmentTime()).isEqualTo(LocalTime.of(12, 30));
+    assertThat(response.role()).isEqualTo(AppointmentMemberRole.HOST);
+  }
+
+  @Test
+  void updateThrowsBusinessExceptionWhenUserIsNotHost() {
+    AppointmentUpdateRequest request = updateRequest();
+    given(appointmentAccessValidator.validateHost(APPOINTMENT_ID, USER_ID))
+        .willThrow(new BusinessException(ErrorCode.APPOINTMENT_HOST_REQUIRED));
+
+    assertThatThrownBy(() -> appointmentService.update(APPOINTMENT_ID, USER_ID, request))
+        .isInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  void updateThrowsBusinessExceptionWhenAppointmentIsConfirmed() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    ReflectionTestUtils.setField(appointment, "status", AppointmentStatus.CONFIRMED);
+    AppointmentMember hostMember =
+        AppointmentMember.createUserMember(
+            APPOINTMENT_ID, USER_ID, AppointmentMemberRole.HOST, NOW);
+    AppointmentUpdateRequest request = updateRequest();
+    given(appointmentAccessValidator.validateHost(APPOINTMENT_ID, USER_ID)).willReturn(hostMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+
+    assertThatThrownBy(() -> appointmentService.update(APPOINTMENT_ID, USER_ID, request))
+        .isInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  void deleteRemovesAppointmentWhenUserIsHostAndAppointmentIsPlanning() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    AppointmentMember hostMember =
+        AppointmentMember.createUserMember(
+            APPOINTMENT_ID, USER_ID, AppointmentMemberRole.HOST, NOW);
+    given(appointmentAccessValidator.validateHost(APPOINTMENT_ID, USER_ID)).willReturn(hostMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+
+    appointmentService.delete(APPOINTMENT_ID, USER_ID);
+
+    verify(appointmentRepository).delete(appointment);
+  }
+
+  @Test
+  void deleteThrowsBusinessExceptionWhenUserIsNotHost() {
+    given(appointmentAccessValidator.validateHost(APPOINTMENT_ID, USER_ID))
+        .willThrow(new BusinessException(ErrorCode.APPOINTMENT_HOST_REQUIRED));
+
+    assertThatThrownBy(() -> appointmentService.delete(APPOINTMENT_ID, USER_ID))
+        .isInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  void deleteThrowsBusinessExceptionWhenAppointmentIsConfirmed() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    ReflectionTestUtils.setField(appointment, "status", AppointmentStatus.CONFIRMED);
+    AppointmentMember hostMember =
+        AppointmentMember.createUserMember(
+            APPOINTMENT_ID, USER_ID, AppointmentMemberRole.HOST, NOW);
+    given(appointmentAccessValidator.validateHost(APPOINTMENT_ID, USER_ID)).willReturn(hostMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+
+    assertThatThrownBy(() -> appointmentService.delete(APPOINTMENT_ID, USER_ID))
+        .isInstanceOf(BusinessException.class);
+  }
+
   private AppointmentCreateRequest createRequest() {
     return new AppointmentCreateRequest(
         "강남 저녁 약속", LocalDate.of(2026, 7, 1), LocalTime.of(19, 0), "저녁 먹을 장소 정하기", "강남역", "늦지 않기");
+  }
+
+  private AppointmentUpdateRequest updateRequest() {
+    return new AppointmentUpdateRequest(
+        "홍대 점심 약속",
+        LocalDate.of(2026, 7, 2),
+        LocalTime.of(12, 30),
+        "점심 먹을 장소 정하기",
+        "홍대입구역",
+        "우산 챙기기");
   }
 
   private Appointment appointment(Long appointmentId, String title) {
