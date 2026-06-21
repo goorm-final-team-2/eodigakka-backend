@@ -80,4 +80,10 @@ public class AppointmentController {
     appointmentService.delete(appointmentId, authUser.userId());
     return ApiResponse.success();
   }
+
+  @PatchMapping("/{appointmentId}/close")
+  public ApiResponse<AppointmentResponse> close(
+      @AuthenticationPrincipal AuthUser authUser, @PathVariable Long appointmentId) {
+    return ApiResponse.success(appointmentService.close(appointmentId, authUser.userId()));
+  }
 }
