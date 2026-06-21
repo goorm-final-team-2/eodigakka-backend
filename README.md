@@ -132,7 +132,8 @@ DB 스키마는 `src/main/resources/db/migration`의 Flyway SQL로 관리합니�
 ```text
 V1__baseline.sql
 V2__create_initial_schema.sql
-V3__{next_change}.sql
+V3__create_refresh_tokens.sql
+V4__{next_change}.sql
 ```
 
 - 마이그레이션 번호는 작업 시작 전에 팀 채널에서 선점합니다.
@@ -184,6 +185,7 @@ git switch -c feature/appointment-room
 
 ## 현재 공통 설정 주의사항
 
-- 인증 기능 구현 전이므로 `SecurityConfig`의 일반 API 요청은 임시로 허용되어 있습니다.
-- 카카오 로그인 기능 개발 시 JWT 인증 필터와 엔드포인트별 권한 정책을 적용해야 합니다.
+- 카카오 로그인과 JWT 인증 필터가 적용되어 인증 API와 문서/헬스체크를 제외한 요청은 Access Token이 필요합니다.
+- Access Token은 프론트엔드 메모리에 보관하고, Refresh Token은 HttpOnly Cookie로 관리합니다.
+- 로컬 카카오 Redirect URI 기본값은 `http://localhost:5173/oauth/kakao/callback`입니다.
 - Kakao REST API Key, Client Secret, JWT Secret은 백엔드 환경변수로만 관리합니다.

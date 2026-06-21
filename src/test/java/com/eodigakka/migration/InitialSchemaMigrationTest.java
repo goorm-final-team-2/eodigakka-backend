@@ -24,7 +24,8 @@ class InitialSchemaMigrationTest {
           "place_candidates",
           "votes",
           "confirmed_places",
-          "member_locations");
+          "member_locations",
+          "refresh_tokens");
 
   @Container
   static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
@@ -44,6 +45,7 @@ class InitialSchemaMigrationTest {
       assertThat(readApplicationTables(statement))
           .containsExactlyInAnyOrderElementsOf(EXPECTED_TABLES);
       assertThat(isMigrationApplied(statement, "2")).isTrue();
+      assertThat(isMigrationApplied(statement, "3")).isTrue();
     }
   }
 
