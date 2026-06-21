@@ -62,6 +62,18 @@ public class AppointmentMember {
     return createUserMember(appointmentId, userId, AppointmentMemberRole.MEMBER, joinedAt);
   }
 
+  public static AppointmentMember createGuest(
+      Long appointmentId, String guestName, String guestTokenHash, Instant joinedAt) {
+    AppointmentMember appointmentMember = new AppointmentMember();
+    appointmentMember.appointmentId = appointmentId;
+    appointmentMember.memberType = AppointmentMemberType.GUEST;
+    appointmentMember.guestName = guestName;
+    appointmentMember.guestTokenHash = guestTokenHash;
+    appointmentMember.role = AppointmentMemberRole.MEMBER;
+    appointmentMember.joinedAt = joinedAt;
+    return appointmentMember;
+  }
+
   public Long getId() {
     return id;
   }

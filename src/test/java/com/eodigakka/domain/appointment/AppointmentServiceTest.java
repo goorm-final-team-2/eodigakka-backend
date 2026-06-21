@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import com.eodigakka.global.error.BusinessException;
 import com.eodigakka.global.error.ErrorCode;
+import com.eodigakka.global.security.MessageDigestSupport;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -35,6 +36,7 @@ class AppointmentServiceTest {
   @Mock private AppointmentMemberRepository appointmentMemberRepository;
   @Mock private AppointmentAccessValidator appointmentAccessValidator;
   @Mock private InviteCodeGenerator inviteCodeGenerator;
+  @Mock private GuestTokenGenerator guestTokenGenerator;
 
   private AppointmentService appointmentService;
 
@@ -46,6 +48,7 @@ class AppointmentServiceTest {
             appointmentMemberRepository,
             appointmentAccessValidator,
             inviteCodeGenerator,
+            guestTokenGenerator,
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -193,6 +196,85 @@ class AppointmentServiceTest {
 
     assertThatThrownBy(
             () -> appointmentService.join(USER_ID, new AppointmentJoinRequest("A7K2P9QX")))
+        .isInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  void findInvitePreviewReturnsPublicAppointmentPreview() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    given(appointmentRepository.findByInviteCode("A7K2P9QX")).willReturn(Optional.of(appointment));
+
+    AppointmentInvitePreviewResponse response = appointmentService.findInvitePreview("A7K2P9QX");
+
+    assertThat(response.title()).isEqualTo("강남 저녁 약속");
+    assertThat(response.appointmentDate()).isEqualTo(LocalDate.of(2026, 7, 1));
+    assertThat(response.appointmentTime()).isEqualTo(LocalTime.of(19, 0));
+    assertThat(response.preferredArea()).isEqualTo("강남역");
+    assertThat(response.status()).isEqualTo(AppointmentStatus.PLANNING);
+  }
+
+  @Test
+  void findInvitePreviewThrowsBusinessExceptionWhenInviteCodeDoesNotExist() {
+    given(appointmentRepository.findByInviteCode("UNKNOWN")).willReturn(Optional.empty());
+
+    assertThatThrownBy(() -> appointmentService.findInvitePreview("UNKNOWN"))
+        .isInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  void joinAsGuestCreatesGuestMemberAndReturnsRawGuestToken() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    given(appointmentRepository.findByInviteCode("A7K2P9QX")).willReturn(Optional.of(appointment));
+    given(appointmentMemberRepository.existsByAppointmentIdAndGuestName(APPOINTMENT_ID, "철수"))
+        .willReturn(false);
+    given(guestTokenGenerator.generate()).willReturn("raw-guest-token");
+    given(appointmentMemberRepository.save(any(AppointmentMember.class)))
+        .willAnswer(
+            invocation -> {
+              AppointmentMember appointmentMember = invocation.getArgument(0);
+              ReflectionTestUtils.setField(appointmentMember, "id", 100L);
+              return appointmentMember;
+            });
+
+    GuestJoinResponse response =
+        appointmentService.joinAsGuest(new GuestJoinRequest("A7K2P9QX", "철수"));
+
+    assertThat(response.appointment().id()).isEqualTo(APPOINTMENT_ID);
+    assertThat(response.appointment().role()).isEqualTo(AppointmentMemberRole.MEMBER);
+    assertThat(response.guest().memberId()).isEqualTo(100L);
+    assertThat(response.guest().guestName()).isEqualTo("철수");
+    assertThat(response.guest().guestToken()).isEqualTo("raw-guest-token");
+
+    ArgumentCaptor<AppointmentMember> memberCaptor =
+        ArgumentCaptor.forClass(AppointmentMember.class);
+    verify(appointmentMemberRepository).save(memberCaptor.capture());
+    AppointmentMember savedMember = memberCaptor.getValue();
+    assertThat(savedMember.getAppointmentId()).isEqualTo(APPOINTMENT_ID);
+    assertThat(savedMember.getMemberType()).isEqualTo(AppointmentMemberType.GUEST);
+    assertThat(savedMember.getRole()).isEqualTo(AppointmentMemberRole.MEMBER);
+    assertThat(savedMember.getGuestName()).isEqualTo("철수");
+    assertThat(savedMember.getGuestTokenHash())
+        .isEqualTo(MessageDigestSupport.sha256Hex("raw-guest-token"));
+  }
+
+  @Test
+  void joinAsGuestThrowsBusinessExceptionWhenGuestNameAlreadyExists() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    given(appointmentRepository.findByInviteCode("A7K2P9QX")).willReturn(Optional.of(appointment));
+    given(appointmentMemberRepository.existsByAppointmentIdAndGuestName(APPOINTMENT_ID, "철수"))
+        .willReturn(true);
+
+    assertThatThrownBy(() -> appointmentService.joinAsGuest(new GuestJoinRequest("A7K2P9QX", "철수")))
+        .isInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  void joinAsGuestThrowsBusinessExceptionWhenAppointmentIsClosed() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    ReflectionTestUtils.setField(appointment, "status", AppointmentStatus.CLOSED);
+    given(appointmentRepository.findByInviteCode("A7K2P9QX")).willReturn(Optional.of(appointment));
+
+    assertThatThrownBy(() -> appointmentService.joinAsGuest(new GuestJoinRequest("A7K2P9QX", "철수")))
         .isInstanceOf(BusinessException.class);
   }
 
