@@ -179,6 +179,47 @@ Authorization: Bearer {accessToken}
 방장만 가능하며 `CONFIRMED` 상태에서만 가능합니다.
 성공 시 약속방 상태가 `CLOSED`로 변경됩니다.
 
+### 약속방 참여자 목록 조회
+
+```http
+GET /api/appointments/{appointmentId}/members
+Authorization: Bearer {accessToken}
+```
+
+또는:
+
+```http
+X-Guest-Token: {guestToken}
+```
+
+약속방 참여자만 조회할 수 있습니다.
+
+응답:
+
+```json
+{
+  "data": [
+    {
+      "memberId": 1,
+      "memberType": "USER",
+      "role": "HOST",
+      "displayName": "홍길동",
+      "profileImage": "https://...",
+      "joinedAt": "2026-06-21T12:00:00Z"
+    },
+    {
+      "memberId": 2,
+      "memberType": "GUEST",
+      "role": "MEMBER",
+      "displayName": "철수",
+      "profileImage": null,
+      "joinedAt": "2026-06-21T12:01:00Z"
+    }
+  ],
+  "message": "success"
+}
+```
+
 ## Invite / Guest API
 
 ### 초대 코드 약속방 참여
@@ -462,6 +503,7 @@ X-Guest-Token: {guestToken}
 | 투표 결과 조회 | 가능 | 가능 | 가능 |
 | 확정 장소 선택 | 가능 | 불가 | 불가 |
 | 확정 장소 조회 | 확정 장소 없음 | 가능 | 가능 |
+| 참여자 목록 조회 | 가능 | 가능 | 가능 |
 | 위치 공유/갱신 | 불가 | 가능 | 불가 |
 | 위치 목록 조회 | 불가 | 가능 | 불가 |
 | 약속방 종료 | 불가 | 가능 | 불가 |

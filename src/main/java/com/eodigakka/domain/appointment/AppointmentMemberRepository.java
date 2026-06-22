@@ -13,5 +13,7 @@ public interface AppointmentMemberRepository extends JpaRepository<AppointmentMe
 
   List<AppointmentMember> findByUserId(Long userId);
 
+  List<AppointmentMember> findByAppointmentIdOrderByJoinedAtAscIdAsc(Long appointmentId);
+
   boolean existsByAppointmentIdAndGuestName(Long appointmentId, String guestName);
 }
