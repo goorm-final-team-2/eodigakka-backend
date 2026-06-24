@@ -85,6 +85,21 @@ macOS/Linux:
 docker compose --profile full up --build -d
 ```
 
+운영 EC2에서 PostgreSQL을 RDS로 분리해 실행할 때는 운영용 Compose 파일을 사용합니다.
+
+```bash
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+운영 DB 연결값은 EC2의 `.env`에서 관리하며, RDS PostgreSQL 접속에는 SSL 옵션을 포함합니다.
+
+```text
+SPRING_PROFILES_ACTIVE=prod
+DB_URL=jdbc:postgresql://{rds-endpoint}:5432/eodigakka?sslmode=require
+DB_USERNAME=eodigakka
+DB_PASSWORD={rds-master-password}
+```
+
 ## 접속 주소
 
 | 항목 | URL |
