@@ -286,6 +286,14 @@ POST /api/appointments/guests
 }
 ```
 
+게스트 세션 정책:
+
+- `guestSession` 기본 유지 기간은 `APP_GUEST_COOKIE_MAX_AGE_DAYS` 기준이며 기본값은 30일입니다.
+- 기존 브라우저에 유효한 `guestSession` 쿠키가 있으면 이후 게스트 API 요청에 그대로 사용할 수 있습니다.
+- 쿠키가 없거나 유효하지 않으면 `GUEST_SESSION_INVALID`가 내려갈 수 있으며, 프론트는 게스트 입장 화면으로 유도합니다.
+- 쿠키가 만료되었거나 폐기된 세션이면 `GUEST_SESSION_EXPIRED`가 내려갈 수 있으며, 프론트는 다시 게스트 입장을 안내합니다.
+- 같은 약속방에서 이미 사용 중인 게스트 이름으로 새로 입장하면 `GUEST_NAME_ALREADY_EXISTS`가 내려갑니다.
+
 ## Place Candidate API
 
 로그인 사용자와 게스트 모두 호출할 수 있습니다.

@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import com.eodigakka.global.error.BusinessException;
+import com.eodigakka.global.error.ErrorCode;
 import com.eodigakka.global.security.MessageDigestSupport;
 import java.time.Clock;
 import java.time.Instant;
@@ -89,7 +90,28 @@ class GuestSessionServiceTest {
         .willReturn(Optional.of(guestSession));
 
     assertThatThrownBy(() -> guestSessionService.resolve(APPOINTMENT_ID, SESSION_TOKEN))
-        .isInstanceOf(BusinessException.class);
+        .isInstanceOf(BusinessException.class)
+        .extracting("errorCode")
+        .isEqualTo(ErrorCode.GUEST_SESSION_EXPIRED);
+  }
+
+  @Test
+  void resolveThrowsBusinessExceptionWhenGuestSessionRevoked() {
+    AppointmentMember appointmentMember = guestMember(APPOINTMENT_ID);
+    GuestSession guestSession =
+        GuestSession.create(
+            appointmentMember,
+            MessageDigestSupport.sha256Hex(SESSION_TOKEN),
+            NOW.plusSeconds(3600),
+            NOW);
+    ReflectionTestUtils.setField(guestSession, "revokedAt", NOW.minusSeconds(1));
+    given(guestSessionRepository.findByTokenHash(MessageDigestSupport.sha256Hex(SESSION_TOKEN)))
+        .willReturn(Optional.of(guestSession));
+
+    assertThatThrownBy(() -> guestSessionService.resolve(APPOINTMENT_ID, SESSION_TOKEN))
+        .isInstanceOf(BusinessException.class)
+        .extracting("errorCode")
+        .isEqualTo(ErrorCode.GUEST_SESSION_EXPIRED);
   }
 
   @Test
@@ -105,7 +127,9 @@ class GuestSessionServiceTest {
         .willReturn(Optional.of(guestSession));
 
     assertThatThrownBy(() -> guestSessionService.resolve(APPOINTMENT_ID, SESSION_TOKEN))
-        .isInstanceOf(BusinessException.class);
+        .isInstanceOf(BusinessException.class)
+        .extracting("errorCode")
+        .isEqualTo(ErrorCode.GUEST_SESSION_INVALID);
   }
 
   @Test
@@ -113,7 +137,9 @@ class GuestSessionServiceTest {
     given(guestSessionRepository.findByTokenHash(any())).willReturn(Optional.empty());
 
     assertThatThrownBy(() -> guestSessionService.resolve(APPOINTMENT_ID, SESSION_TOKEN))
-        .isInstanceOf(BusinessException.class);
+        .isInstanceOf(BusinessException.class)
+        .extracting("errorCode")
+        .isEqualTo(ErrorCode.GUEST_SESSION_INVALID);
   }
 
   private AppointmentMember guestMember(Long appointmentId) {
