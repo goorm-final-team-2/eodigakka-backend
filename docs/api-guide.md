@@ -438,6 +438,8 @@ X-Guest-Token: {guestToken}
 ## Location API
 
 위치 공유와 조회는 `CONFIRMED` 상태에서만 가능합니다.
+참여자 최신 위치는 Redis에 우선 저장하고, Redis에 데이터가 없거나 조회할 수 없는 경우 DB의 마지막 위치 정보를 fallback으로 조회합니다.
+요청/응답 형식은 저장소 변경과 무관하게 동일합니다.
 
 ### 내 위치 공유/갱신
 

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -41,6 +42,7 @@ class MemberLocationServiceTest {
   @Mock private AppointmentRepository appointmentRepository;
   @Mock private AppointmentMemberResolver appointmentMemberResolver;
   @Mock private MemberLocationRepository memberLocationRepository;
+  @Mock private RedisMemberLocationStore redisMemberLocationStore;
 
   private MemberLocationService memberLocationService;
 
@@ -51,6 +53,7 @@ class MemberLocationServiceTest {
             appointmentRepository,
             appointmentMemberResolver,
             memberLocationRepository,
+            redisMemberLocationStore,
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -81,6 +84,7 @@ class MemberLocationServiceTest {
     assertThat(response.longitude()).isEqualTo(127.0276);
     assertThat(response.accuracy()).isEqualTo(20.5);
     assertThat(response.updatedAt()).isEqualTo(NOW);
+    verify(redisMemberLocationStore).save(response);
   }
 
   @Test
@@ -100,6 +104,7 @@ class MemberLocationServiceTest {
 
     assertThat(response.memberId()).isEqualTo(MEMBER_ID);
     assertThat(response.updatedAt()).isEqualTo(NOW);
+    verify(redisMemberLocationStore).save(response);
   }
 
   @Test
@@ -122,6 +127,7 @@ class MemberLocationServiceTest {
     assertThat(response.accuracy()).isEqualTo(10.0);
     assertThat(response.updatedAt()).isEqualTo(NOW);
     verify(memberLocationRepository, never()).save(any());
+    verify(redisMemberLocationStore).save(response);
   }
 
   @Test
@@ -137,6 +143,7 @@ class MemberLocationServiceTest {
             () -> memberLocationService.updateMine(APPOINTMENT_ID, authUser, null, request))
         .isInstanceOf(BusinessException.class);
     verify(memberLocationRepository, never()).save(any());
+    verify(redisMemberLocationStore, never()).save(any());
   }
 
   @Test
@@ -150,6 +157,27 @@ class MemberLocationServiceTest {
             () -> memberLocationService.updateMine(APPOINTMENT_ID, authUser, null, request))
         .isInstanceOf(BusinessException.class);
     verify(memberLocationRepository, never()).save(any());
+    verify(redisMemberLocationStore, never()).save(any());
+  }
+
+  @Test
+  void updateMineReturnsLocationEvenWhenRedisSaveFails() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    MemberLocationUpdateRequest request = updateRequest();
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID))
+        .willReturn(Optional.of(appointment(AppointmentStatus.CONFIRMED)));
+    given(memberLocationRepository.findByAppointmentIdAndMemberId(APPOINTMENT_ID, MEMBER_ID))
+        .willReturn(Optional.empty());
+    given(memberLocationRepository.save(any(MemberLocation.class)))
+        .willAnswer(invocation -> invocation.getArgument(0));
+    willThrow(new IllegalStateException("redis down")).given(redisMemberLocationStore).save(any());
+
+    MemberLocationResponse response =
+        memberLocationService.updateMine(APPOINTMENT_ID, authUser, null, request);
+
+    assertThat(response.memberId()).isEqualTo(MEMBER_ID);
   }
 
   @Test
@@ -162,6 +190,7 @@ class MemberLocationServiceTest {
         .willReturn(Optional.of(appointment(AppointmentStatus.CONFIRMED)));
     given(memberLocationRepository.findByAppointmentIdOrderByUpdatedAtDescIdAsc(APPOINTMENT_ID))
         .willReturn(List.of(memberLocation));
+    given(redisMemberLocationStore.findAll(APPOINTMENT_ID)).willReturn(List.of());
 
     List<MemberLocationResponse> responses =
         memberLocationService.findAll(APPOINTMENT_ID, authUser, null);
@@ -171,17 +200,38 @@ class MemberLocationServiceTest {
   }
 
   @Test
-  void findAllReturnsLocationsWhenGuestIsAppointmentMember() {
+  void findAllReturnsRedisLocationsWhenGuestIsAppointmentMember() {
     MemberLocation memberLocation = memberLocation();
     given(appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_TOKEN))
         .willReturn(guestMember());
     given(appointmentRepository.findById(APPOINTMENT_ID))
         .willReturn(Optional.of(appointment(AppointmentStatus.CONFIRMED)));
+    given(redisMemberLocationStore.findAll(APPOINTMENT_ID))
+        .willReturn(List.of(MemberLocationResponse.from(memberLocation)));
+
+    List<MemberLocationResponse> responses =
+        memberLocationService.findAll(APPOINTMENT_ID, null, GUEST_TOKEN);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.getFirst().memberId()).isEqualTo(MEMBER_ID);
+    verify(memberLocationRepository, never()).findByAppointmentIdOrderByUpdatedAtDescIdAsc(any());
+  }
+
+  @Test
+  void findAllFallsBackToDatabaseWhenRedisFindFails() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    MemberLocation memberLocation = memberLocation();
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID))
+        .willReturn(Optional.of(appointment(AppointmentStatus.CONFIRMED)));
+    given(redisMemberLocationStore.findAll(APPOINTMENT_ID))
+        .willThrow(new IllegalStateException("redis down"));
     given(memberLocationRepository.findByAppointmentIdOrderByUpdatedAtDescIdAsc(APPOINTMENT_ID))
         .willReturn(List.of(memberLocation));
 
     List<MemberLocationResponse> responses =
-        memberLocationService.findAll(APPOINTMENT_ID, null, GUEST_TOKEN);
+        memberLocationService.findAll(APPOINTMENT_ID, authUser, null);
 
     assertThat(responses).hasSize(1);
     assertThat(responses.getFirst().memberId()).isEqualTo(MEMBER_ID);

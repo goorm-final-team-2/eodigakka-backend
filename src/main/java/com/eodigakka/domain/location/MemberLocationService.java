@@ -10,6 +10,8 @@ import com.eodigakka.global.security.AuthUser;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,20 +19,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MemberLocationService {
 
+  private static final Logger log = LoggerFactory.getLogger(MemberLocationService.class);
+
   private final AppointmentRepository appointmentRepository;
   private final AppointmentMemberResolver appointmentMemberResolver;
   private final MemberLocationRepository memberLocationRepository;
+  private final RedisMemberLocationStore redisMemberLocationStore;
   private final Clock clock;
 
   @Autowired
   public MemberLocationService(
       AppointmentRepository appointmentRepository,
       AppointmentMemberResolver appointmentMemberResolver,
-      MemberLocationRepository memberLocationRepository) {
+      MemberLocationRepository memberLocationRepository,
+      RedisMemberLocationStore redisMemberLocationStore) {
     this(
         appointmentRepository,
         appointmentMemberResolver,
         memberLocationRepository,
+        redisMemberLocationStore,
         Clock.systemUTC());
   }
 
@@ -38,10 +45,12 @@ public class MemberLocationService {
       AppointmentRepository appointmentRepository,
       AppointmentMemberResolver appointmentMemberResolver,
       MemberLocationRepository memberLocationRepository,
+      RedisMemberLocationStore redisMemberLocationStore,
       Clock clock) {
     this.appointmentRepository = appointmentRepository;
     this.appointmentMemberResolver = appointmentMemberResolver;
     this.memberLocationRepository = memberLocationRepository;
+    this.redisMemberLocationStore = redisMemberLocationStore;
     this.clock = clock;
   }
 
@@ -76,7 +85,9 @@ public class MemberLocationService {
                             request.longitude(),
                             request.accuracy(),
                             now)));
-    return MemberLocationResponse.from(memberLocation);
+    MemberLocationResponse response = MemberLocationResponse.from(memberLocation);
+    saveLatestLocation(response);
+    return response;
   }
 
   @Transactional(readOnly = true)
@@ -85,11 +96,39 @@ public class MemberLocationService {
     appointmentMemberResolver.resolve(appointmentId, authUser, guestToken);
     Appointment appointment = getAppointment(appointmentId);
     appointment.validateConfirmed();
+    List<MemberLocationResponse> latestLocations = findLatestLocations(appointmentId);
+    if (!latestLocations.isEmpty()) {
+      return latestLocations;
+    }
     return memberLocationRepository
         .findByAppointmentIdOrderByUpdatedAtDescIdAsc(appointmentId)
         .stream()
         .map(MemberLocationResponse::from)
         .toList();
+  }
+
+  private void saveLatestLocation(MemberLocationResponse response) {
+    try {
+      redisMemberLocationStore.save(response);
+    } catch (RuntimeException exception) {
+      log.warn(
+          "Failed to save member location to Redis. appointmentId={}, memberId={}",
+          response.appointmentId(),
+          response.memberId(),
+          exception);
+    }
+  }
+
+  private List<MemberLocationResponse> findLatestLocations(Long appointmentId) {
+    try {
+      List<MemberLocationResponse> latestLocations =
+          redisMemberLocationStore.findAll(appointmentId);
+      return latestLocations == null ? List.of() : latestLocations;
+    } catch (RuntimeException exception) {
+      log.warn(
+          "Failed to find member locations from Redis. appointmentId={}", appointmentId, exception);
+      return List.of();
+    }
   }
 
   private Appointment getAppointment(Long appointmentId) {
