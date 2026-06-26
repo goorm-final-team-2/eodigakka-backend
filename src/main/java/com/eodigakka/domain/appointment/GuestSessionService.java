@@ -53,12 +53,14 @@ public class GuestSessionService {
     GuestSession guestSession =
         guestSessionRepository
             .findByTokenHash(MessageDigestSupport.sha256Hex(sessionToken))
-            .orElseThrow(() -> new BusinessException(ErrorCode.APPOINTMENT_MEMBER_NOT_FOUND));
+            .orElseThrow(() -> new BusinessException(ErrorCode.GUEST_SESSION_INVALID));
 
     Instant now = Instant.now(clock);
-    if (!guestSession.isValid(now)
-        || !guestSession.getAppointmentMember().getAppointmentId().equals(appointmentId)) {
-      throw new BusinessException(ErrorCode.APPOINTMENT_MEMBER_NOT_FOUND);
+    if (!guestSession.isValid(now)) {
+      throw new BusinessException(ErrorCode.GUEST_SESSION_EXPIRED);
+    }
+    if (!guestSession.getAppointmentMember().getAppointmentId().equals(appointmentId)) {
+      throw new BusinessException(ErrorCode.GUEST_SESSION_INVALID);
     }
 
     guestSession.recordUsedAt(now);
