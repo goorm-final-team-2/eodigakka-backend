@@ -12,14 +12,23 @@ import com.eodigakka.global.error.BusinessException;
 import com.eodigakka.global.error.ErrorCode;
 import com.eodigakka.global.error.GlobalExceptionHandler;
 import com.eodigakka.global.response.ApiResponse;
+import com.eodigakka.global.security.CustomAuthenticationEntryPoint;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
@@ -128,6 +137,23 @@ class GlobalApiContractTest {
         .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
         .andExpect(jsonPath("$.message").value("서버 오류가 발생했습니다."))
         .andExpect(content().string(not(containsString("sensitive detail"))));
+  }
+
+  @Test
+  void authenticationEntryPointWritesUtf8ErrorResponse() throws Exception {
+    CustomAuthenticationEntryPoint entryPoint =
+        new CustomAuthenticationEntryPoint(
+            JsonMapper.builder().addModule(new JavaTimeModule()).build());
+    MockHttpServletResponse response = new MockHttpServletResponse();
+
+    entryPoint.commence(
+        new MockHttpServletRequest(), response, new AuthenticationException("unauthorized") {});
+
+    String body = response.getContentAsString(StandardCharsets.UTF_8);
+    JsonNode responseBody = new ObjectMapper().readTree(body);
+    org.assertj.core.api.Assertions.assertThat(response.getCharacterEncoding()).isEqualTo("UTF-8");
+    org.assertj.core.api.Assertions.assertThat(responseBody.get("message").asText())
+        .isEqualTo("인증이 필요합니다.");
   }
 
   @RestController
