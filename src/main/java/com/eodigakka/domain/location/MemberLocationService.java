@@ -58,10 +58,10 @@ public class MemberLocationService {
   public MemberLocationResponse updateMine(
       Long appointmentId,
       AuthUser authUser,
-      String guestToken,
+      String guestSessionToken,
       MemberLocationUpdateRequest request) {
     AppointmentMember appointmentMember =
-        appointmentMemberResolver.resolve(appointmentId, authUser, guestToken);
+        appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
     Appointment appointment = getAppointment(appointmentId);
     appointment.validateConfirmed();
 
@@ -92,8 +92,8 @@ public class MemberLocationService {
 
   @Transactional(readOnly = true)
   public List<MemberLocationResponse> findAll(
-      Long appointmentId, AuthUser authUser, String guestToken) {
-    appointmentMemberResolver.resolve(appointmentId, authUser, guestToken);
+      Long appointmentId, AuthUser authUser, String guestSessionToken) {
+    appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
     Appointment appointment = getAppointment(appointmentId);
     appointment.validateConfirmed();
     List<MemberLocationResponse> latestLocations = findLatestLocations(appointmentId);

@@ -40,8 +40,7 @@ class SecurityConfigTest {
         .containsExactly("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
     assertThat(configuration.getAllowedHeaders()).containsExactly("*");
     assertThat(configuration.getExposedHeaders()).containsExactly("Location");
-    assertThat(
-            configuration.checkHeaders(List.of("Authorization", "X-Guest-Token", "Content-Type")))
-        .containsExactly("Authorization", "X-Guest-Token", "Content-Type");
+    assertThat(configuration.checkHeaders(List.of("Authorization", "Content-Type")))
+        .containsExactly("Authorization", "Content-Type");
   }
 }

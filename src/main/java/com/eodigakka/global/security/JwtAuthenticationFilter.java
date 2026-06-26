@@ -6,9 +6,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -49,7 +49,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       Long userId =
           jwtTokenProvider.parseUserId(authorizationHeader.substring(BEARER_PREFIX.length()));
       UsernamePasswordAuthenticationToken authentication =
-          new UsernamePasswordAuthenticationToken(new AuthUser(userId), null, List.of());
+          new UsernamePasswordAuthenticationToken(
+              new AuthUser(userId),
+              null,
+              AuthorityUtils.createAuthorityList(SecurityAuthority.USER));
       SecurityContextHolder.getContext().setAuthentication(authentication);
       filterChain.doFilter(request, response);
     } catch (BusinessException exception) {

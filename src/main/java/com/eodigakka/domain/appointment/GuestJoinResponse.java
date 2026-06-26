@@ -2,10 +2,10 @@ package com.eodigakka.domain.appointment;
 
 public record GuestJoinResponse(AppointmentResponse appointment, GuestResponse guest) {
 
-  public static GuestJoinResponse of(
-      Appointment appointment, AppointmentMember appointmentMember, String guestToken) {
+  public static GuestJoinResponse from(
+      Appointment appointment, AppointmentMember appointmentMember) {
     return new GuestJoinResponse(
         AppointmentResponse.from(appointment, appointmentMember.getRole()),
-        GuestResponse.of(appointmentMember, guestToken));
+        GuestResponse.from(appointmentMember));
   }
 }

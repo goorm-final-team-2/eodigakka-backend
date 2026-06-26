@@ -1,9 +1,8 @@
 package com.eodigakka.domain.appointment;
 
-public record GuestResponse(Long memberId, String guestName, String guestToken) {
+public record GuestResponse(Long memberId, String guestName) {
 
-  public static GuestResponse of(AppointmentMember appointmentMember, String guestToken) {
-    return new GuestResponse(
-        appointmentMember.getId(), appointmentMember.getGuestName(), guestToken);
+  public static GuestResponse from(AppointmentMember appointmentMember) {
+    return new GuestResponse(appointmentMember.getId(), appointmentMember.getGuestName());
   }
 }

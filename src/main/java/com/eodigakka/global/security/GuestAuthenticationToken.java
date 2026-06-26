@@ -1,16 +1,16 @@
 package com.eodigakka.global.security;
 
 import java.util.Collection;
-import java.util.List;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.AuthorityUtils;
 
 public class GuestAuthenticationToken extends AbstractAuthenticationToken {
 
   private final GuestUser principal;
 
   public GuestAuthenticationToken(GuestUser principal) {
-    this(principal, List.of());
+    this(principal, AuthorityUtils.createAuthorityList(SecurityAuthority.GUEST));
   }
 
   public GuestAuthenticationToken(

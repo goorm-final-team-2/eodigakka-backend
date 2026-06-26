@@ -24,6 +24,7 @@ public class AppointmentService {
   private final AppointmentAccessValidator appointmentAccessValidator;
   private final InviteCodeGenerator inviteCodeGenerator;
   private final GuestTokenGenerator guestTokenGenerator;
+  private final GuestSessionService guestSessionService;
   private final Clock clock;
 
   @Autowired
@@ -32,13 +33,15 @@ public class AppointmentService {
       AppointmentMemberRepository appointmentMemberRepository,
       AppointmentAccessValidator appointmentAccessValidator,
       InviteCodeGenerator inviteCodeGenerator,
-      GuestTokenGenerator guestTokenGenerator) {
+      GuestTokenGenerator guestTokenGenerator,
+      GuestSessionService guestSessionService) {
     this(
         appointmentRepository,
         appointmentMemberRepository,
         appointmentAccessValidator,
         inviteCodeGenerator,
         guestTokenGenerator,
+        guestSessionService,
         Clock.systemUTC());
   }
 
@@ -48,12 +51,14 @@ public class AppointmentService {
       AppointmentAccessValidator appointmentAccessValidator,
       InviteCodeGenerator inviteCodeGenerator,
       GuestTokenGenerator guestTokenGenerator,
+      GuestSessionService guestSessionService,
       Clock clock) {
     this.appointmentRepository = appointmentRepository;
     this.appointmentMemberRepository = appointmentMemberRepository;
     this.appointmentAccessValidator = appointmentAccessValidator;
     this.inviteCodeGenerator = inviteCodeGenerator;
     this.guestTokenGenerator = guestTokenGenerator;
+    this.guestSessionService = guestSessionService;
     this.clock = clock;
   }
 
@@ -138,7 +143,7 @@ public class AppointmentService {
   }
 
   @Transactional
-  public GuestJoinResponse joinAsGuest(GuestJoinRequest request) {
+  public GuestJoinResult joinAsGuest(GuestJoinRequest request) {
     Appointment appointment = getAppointmentByInviteCode(request.inviteCode());
     appointment.validateJoinable();
     if (appointmentMemberRepository.existsByAppointmentIdAndGuestName(
@@ -146,15 +151,18 @@ public class AppointmentService {
       throw new BusinessException(ErrorCode.GUEST_NAME_ALREADY_EXISTS);
     }
 
-    String guestToken = guestTokenGenerator.generate();
+    // V2 schema still requires appointment_members.guest_token_hash for guest rows.
+    String legacyGuestToken = guestTokenGenerator.generate();
     AppointmentMember appointmentMember =
         appointmentMemberRepository.save(
             AppointmentMember.createGuest(
                 appointment.getId(),
                 request.guestName(),
-                MessageDigestSupport.sha256Hex(guestToken),
+                MessageDigestSupport.sha256Hex(legacyGuestToken),
                 Instant.now(clock)));
-    return GuestJoinResponse.of(appointment, appointmentMember, guestToken);
+    GuestSessionIssue guestSessionIssue = guestSessionService.issue(appointmentMember);
+    return new GuestJoinResult(
+        GuestJoinResponse.from(appointment, appointmentMember), guestSessionIssue);
   }
 
   @Transactional

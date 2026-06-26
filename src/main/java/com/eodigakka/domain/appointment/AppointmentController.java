@@ -5,6 +5,7 @@ import com.eodigakka.global.security.AuthUser;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,9 +22,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AppointmentController {
 
   private final AppointmentService appointmentService;
+  private final GuestCookieService guestCookieService;
 
-  public AppointmentController(AppointmentService appointmentService) {
+  public AppointmentController(
+      AppointmentService appointmentService, GuestCookieService guestCookieService) {
     this.appointmentService = appointmentService;
+    this.guestCookieService = guestCookieService;
   }
 
   @PostMapping
@@ -48,8 +52,14 @@ public class AppointmentController {
   }
 
   @PostMapping("/guests")
-  public ApiResponse<GuestJoinResponse> joinAsGuest(@Valid @RequestBody GuestJoinRequest request) {
-    return ApiResponse.success(appointmentService.joinAsGuest(request));
+  public ResponseEntity<ApiResponse<GuestJoinResponse>> joinAsGuest(
+      @Valid @RequestBody GuestJoinRequest request) {
+    GuestJoinResult result = appointmentService.joinAsGuest(request);
+    return ResponseEntity.ok()
+        .header(
+            HttpHeaders.SET_COOKIE,
+            guestCookieService.createCookie(result.guestSessionIssue()).toString())
+        .body(ApiResponse.success(result.response()));
   }
 
   @GetMapping("/{appointmentId}")

@@ -41,6 +41,12 @@ app:
       path: /api/auth
       secure: ${APP_COOKIE_SECURE:false}
       same-site: Lax
+    guest-cookie:
+      name: guestSession
+      path: /
+      secure: ${APP_GUEST_COOKIE_SECURE:false}
+      same-site: ${APP_GUEST_COOKIE_SAME_SITE:Lax}
+      max-age-days: ${APP_GUEST_COOKIE_MAX_AGE_DAYS:30}
   oauth:
     kakao:
       rest-api-key: ${KAKAO_REST_API_KEY:}

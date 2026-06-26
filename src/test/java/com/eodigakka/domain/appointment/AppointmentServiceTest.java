@@ -37,6 +37,7 @@ class AppointmentServiceTest {
   @Mock private AppointmentAccessValidator appointmentAccessValidator;
   @Mock private InviteCodeGenerator inviteCodeGenerator;
   @Mock private GuestTokenGenerator guestTokenGenerator;
+  @Mock private GuestSessionService guestSessionService;
 
   private AppointmentService appointmentService;
 
@@ -49,6 +50,7 @@ class AppointmentServiceTest {
             appointmentAccessValidator,
             inviteCodeGenerator,
             guestTokenGenerator,
+            guestSessionService,
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -222,12 +224,12 @@ class AppointmentServiceTest {
   }
 
   @Test
-  void joinAsGuestCreatesGuestMemberAndReturnsRawGuestToken() {
+  void joinAsGuestCreatesGuestMemberAndIssuesGuestSession() {
     Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
     given(appointmentRepository.findByInviteCode("A7K2P9QX")).willReturn(Optional.of(appointment));
     given(appointmentMemberRepository.existsByAppointmentIdAndGuestName(APPOINTMENT_ID, "철수"))
         .willReturn(false);
-    given(guestTokenGenerator.generate()).willReturn("raw-guest-token");
+    given(guestTokenGenerator.generate()).willReturn("legacy-guest-token");
     given(appointmentMemberRepository.save(any(AppointmentMember.class)))
         .willAnswer(
             invocation -> {
@@ -235,15 +237,17 @@ class AppointmentServiceTest {
               ReflectionTestUtils.setField(appointmentMember, "id", 100L);
               return appointmentMember;
             });
+    given(guestSessionService.issue(any(AppointmentMember.class)))
+        .willReturn(new GuestSessionIssue("guest-session-token", NOW.plusSeconds(3600)));
 
-    GuestJoinResponse response =
-        appointmentService.joinAsGuest(new GuestJoinRequest("A7K2P9QX", "철수"));
+    GuestJoinResult result = appointmentService.joinAsGuest(new GuestJoinRequest("A7K2P9QX", "철수"));
+    GuestJoinResponse response = result.response();
 
     assertThat(response.appointment().id()).isEqualTo(APPOINTMENT_ID);
     assertThat(response.appointment().role()).isEqualTo(AppointmentMemberRole.MEMBER);
     assertThat(response.guest().memberId()).isEqualTo(100L);
     assertThat(response.guest().guestName()).isEqualTo("철수");
-    assertThat(response.guest().guestToken()).isEqualTo("raw-guest-token");
+    assertThat(result.guestSessionIssue().token()).isEqualTo("guest-session-token");
 
     ArgumentCaptor<AppointmentMember> memberCaptor =
         ArgumentCaptor.forClass(AppointmentMember.class);
@@ -254,7 +258,8 @@ class AppointmentServiceTest {
     assertThat(savedMember.getRole()).isEqualTo(AppointmentMemberRole.MEMBER);
     assertThat(savedMember.getGuestName()).isEqualTo("철수");
     assertThat(savedMember.getGuestTokenHash())
-        .isEqualTo(MessageDigestSupport.sha256Hex("raw-guest-token"));
+        .isEqualTo(MessageDigestSupport.sha256Hex("legacy-guest-token"));
+    verify(guestSessionService).issue(savedMember);
   }
 
   @Test

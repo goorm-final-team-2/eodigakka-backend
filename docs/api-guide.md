@@ -33,14 +33,14 @@ Authorization: Bearer {accessToken}
 
 ### 게스트 사용자
 
-게스트 사용자는 게스트 입장 API에서 받은 `guestToken`을 `X-Guest-Token` 헤더로 전달합니다.
+게스트 사용자는 게스트 입장 API 응답의 `Set-Cookie`로 내려온 `guestSession` 쿠키로 인증됩니다.
 
 ```http
-X-Guest-Token: {guestToken}
+Cookie: guestSession={guestSession}
 ```
 
-게스트 토큰은 초대 코드가 아니라 게스트 본인 식별용 토큰입니다.
-프론트는 게스트 입장 성공 후 받은 `guestToken`을 저장해야 하며, 이후 장소 후보, 투표, 확정 장소 조회, 위치 공유 API 호출 시 함께 전달해야 합니다.
+`guestSession`은 HttpOnly Cookie로 관리되므로 프론트 JavaScript에서 직접 읽거나 저장하지 않습니다.
+게스트 인증이 필요한 요청은 `fetch`의 `credentials: "include"` 또는 axios의 `withCredentials: true`를 사용해 쿠키를 함께 전송해야 합니다.
 
 ## 약속방 상태
 
@@ -189,7 +189,7 @@ Authorization: Bearer {accessToken}
 또는:
 
 ```http
-X-Guest-Token: {guestToken}
+Cookie: guestSession={guestSession}
 ```
 
 약속방 참여자만 조회할 수 있습니다.
@@ -260,7 +260,8 @@ POST /api/appointments/guests
 }
 ```
 
-응답의 `guest.guestToken`은 이후 게스트 인증에 사용합니다.
+응답 시 `guestSession` HttpOnly Cookie가 함께 내려갑니다.
+프론트는 응답 본문에 게스트 토큰을 저장하지 않고, 이후 게스트 요청에 쿠키가 포함되도록 `credentials` 설정만 유지합니다.
 
 ```json
 {
@@ -272,8 +273,7 @@ POST /api/appointments/guests
     },
     "guest": {
       "memberId": 100,
-      "guestName": "철수",
-      "guestToken": "raw-guest-token"
+      "guestName": "철수"
     }
   },
   "message": "success"
@@ -294,7 +294,7 @@ Authorization: Bearer {accessToken}
 또는:
 
 ```http
-X-Guest-Token: {guestToken}
+Cookie: guestSession={guestSession}
 ```
 
 요청:
@@ -325,7 +325,7 @@ Authorization: Bearer {accessToken}
 또는:
 
 ```http
-X-Guest-Token: {guestToken}
+Cookie: guestSession={guestSession}
 ```
 
 ### 장소 후보 삭제
@@ -338,7 +338,7 @@ Authorization: Bearer {accessToken}
 또는:
 
 ```http
-X-Guest-Token: {guestToken}
+Cookie: guestSession={guestSession}
 ```
 
 후보 등록자 또는 방장만 삭제할 수 있으며 `PLANNING` 상태에서만 가능합니다.
@@ -355,7 +355,7 @@ Authorization: Bearer {accessToken}
 또는:
 
 ```http
-X-Guest-Token: {guestToken}
+Cookie: guestSession={guestSession}
 ```
 
 요청:
@@ -379,7 +379,7 @@ Authorization: Bearer {accessToken}
 또는:
 
 ```http
-X-Guest-Token: {guestToken}
+Cookie: guestSession={guestSession}
 ```
 
 응답:
@@ -432,7 +432,7 @@ Authorization: Bearer {accessToken}
 또는:
 
 ```http
-X-Guest-Token: {guestToken}
+Cookie: guestSession={guestSession}
 ```
 
 ## Location API
@@ -451,7 +451,7 @@ Authorization: Bearer {accessToken}
 또는:
 
 ```http
-X-Guest-Token: {guestToken}
+Cookie: guestSession={guestSession}
 ```
 
 요청:
@@ -474,7 +474,7 @@ Authorization: Bearer {accessToken}
 또는:
 
 ```http
-X-Guest-Token: {guestToken}
+Cookie: guestSession={guestSession}
 ```
 
 응답:
@@ -513,10 +513,11 @@ X-Guest-Token: {guestToken}
 ## 프론트 주의사항
 
 - 로그인 사용자는 `Authorization: Bearer {accessToken}` 사용
-- 게스트 사용자는 `X-Guest-Token: {guestToken}` 사용
+- 게스트 사용자는 `guestSession` HttpOnly Cookie 사용
 - 초대 코드는 방 입장/미리보기용이고 게스트 본인 식별용이 아님
-- 게스트 본인 식별은 게스트 입장 응답의 `guestToken`으로 처리
-- 게스트 토큰은 같은 브라우저 재접속을 위해 프론트에서 저장 필요
+- 게스트 본인 식별은 서버가 발급한 `guestSession`으로 처리
+- 게스트 세션은 같은 브라우저 재접속을 위해 쿠키로 유지
+- 게스트 요청은 `credentials: "include"` 또는 `withCredentials: true` 설정 필요
 - 실제 `.env` 파일은 커밋 금지
 - API 서버 주소는 환경변수로 관리 권장
 - 브라우저 위치 권한 요청은 프론트에서 처리 필요
