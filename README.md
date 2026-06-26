@@ -209,3 +209,25 @@ git switch -c feature/appointment-room
 - 게스트 세션 쿠키는 프론트 JavaScript에서 직접 읽거나 저장하지 않습니다.
 - 로컬 카카오 Redirect URI 기본값은 `http://localhost:5173/oauth/kakao/callback`입니다.
 - Kakao REST API Key, Client Secret, JWT Secret은 백엔드 환경변수로만 관리합니다.
+
+## Cookie 설정 기준
+
+로컬 HTTP 개발 환경에서는 Refresh Token Cookie와 게스트 세션 Cookie 모두 `Secure=false`, `SameSite=Lax`를 사용합니다.
+
+```text
+APP_COOKIE_SECURE=false
+APP_COOKIE_SAME_SITE=Lax
+APP_GUEST_COOKIE_SECURE=false
+APP_GUEST_COOKIE_SAME_SITE=Lax
+```
+
+HTTPS 배포 환경에서 프론트와 백엔드 도메인이 분리되면 브라우저가 Cookie를 차단하지 않도록 `Secure=true`, `SameSite=None` 조합을 사용합니다.
+
+```text
+APP_COOKIE_SECURE=true
+APP_COOKIE_SAME_SITE=None
+APP_GUEST_COOKIE_SECURE=true
+APP_GUEST_COOKIE_SAME_SITE=None
+```
+
+`SameSite=None` Cookie는 브라우저 정책상 `Secure=true`와 함께 사용해야 합니다.
