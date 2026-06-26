@@ -42,6 +42,12 @@ Cookie: guestSession={guestSession}
 `guestSession`은 HttpOnly Cookie로 관리되므로 프론트 JavaScript에서 직접 읽거나 저장하지 않습니다.
 게스트 인증이 필요한 요청은 `fetch`의 `credentials: "include"` 또는 axios의 `withCredentials: true`를 사용해 쿠키를 함께 전송해야 합니다.
 
+프론트 저장소에는 게스트 토큰을 저장하지 않습니다.
+게스트 세션 유지와 만료 검증은 백엔드가 담당합니다.
+
+로컬 HTTP 환경에서는 `APP_GUEST_COOKIE_SECURE=false`, `SameSite=Lax`를 사용합니다.
+HTTPS 배포 환경에서 프론트와 백엔드 도메인이 분리되면 `APP_GUEST_COOKIE_SECURE=true`, `SameSite=None` 조합을 검토해야 합니다.
+
 ## 약속방 상태
 
 ```text
@@ -518,6 +524,8 @@ Cookie: guestSession={guestSession}
 - 게스트 본인 식별은 서버가 발급한 `guestSession`으로 처리
 - 게스트 세션은 같은 브라우저 재접속을 위해 쿠키로 유지
 - 게스트 요청은 `credentials: "include"` 또는 `withCredentials: true` 설정 필요
+- 게스트 토큰을 `localStorage`, `sessionStorage`, JS 변수에 저장하지 않음
+- Swagger에는 `bearerAuth`와 `guestSessionCookie` 인증 스키마가 함께 표시됨
 - 실제 `.env` 파일은 커밋 금지
 - API 서버 주소는 환경변수로 관리 권장
 - 브라우저 위치 권한 요청은 프론트에서 처리 필요

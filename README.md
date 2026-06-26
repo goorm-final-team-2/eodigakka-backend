@@ -111,6 +111,9 @@ DB_PASSWORD={rds-master-password}
 | PostgreSQL | `localhost:5432` (`POSTGRES_HOST_PORT`로 변경 가능) |
 | Redis | `localhost:6379` (`REDIS_HOST_PORT`로 변경 가능) |
 
+Swagger/OpenAPI에는 로그인 사용자용 `bearerAuth`와 게스트 사용자용 `guestSessionCookie` 인증 스키마가 함께 노출됩니다.
+프론트 연동 세부 계약은 `docs/api-guide.md`를 기준으로 확인합니다.
+
 ## 테스트와 빌드
 
 Docker Desktop을 실행한 상태에서 수행합니다. 테스트는 Testcontainers가 별도의 PostgreSQL 17 컨테이너를 생성합니다.
@@ -200,7 +203,9 @@ git switch -c feature/appointment-room
 
 ## 현재 공통 설정 주의사항
 
-- 카카오 로그인과 JWT 인증 필터가 적용되어 인증 API와 문서/헬스체크를 제외한 요청은 Access Token이 필요합니다.
+- 카카오 로그인과 JWT 인증 필터가 적용되어 로그인 사용자 API는 Access Token이 필요합니다.
 - Access Token은 프론트엔드 메모리에 보관하고, Refresh Token은 HttpOnly Cookie로 관리합니다.
+- 게스트 사용자는 `guestSession` HttpOnly Cookie로 인증하며, 프론트 요청에는 `credentials: "include"` 또는 `withCredentials: true` 설정이 필요합니다.
+- 게스트 세션 쿠키는 프론트 JavaScript에서 직접 읽거나 저장하지 않습니다.
 - 로컬 카카오 Redirect URI 기본값은 `http://localhost:5173/oauth/kakao/callback`입니다.
 - Kakao REST API Key, Client Secret, JWT Secret은 백엔드 환경변수로만 관리합니다.
