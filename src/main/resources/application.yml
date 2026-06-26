@@ -40,7 +40,7 @@ app:
       name: refreshToken
       path: /api/auth
       secure: ${APP_COOKIE_SECURE:false}
-      same-site: Lax
+      same-site: ${APP_COOKIE_SAME_SITE:Lax}
     guest-cookie:
       name: guestSession
       path: /

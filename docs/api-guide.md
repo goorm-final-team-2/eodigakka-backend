@@ -45,8 +45,8 @@ Cookie: guestSession={guestSession}
 프론트 저장소에는 게스트 토큰을 저장하지 않습니다.
 게스트 세션 유지와 만료 검증은 백엔드가 담당합니다.
 
-로컬 HTTP 환경에서는 `APP_GUEST_COOKIE_SECURE=false`, `SameSite=Lax`를 사용합니다.
-HTTPS 배포 환경에서 프론트와 백엔드 도메인이 분리되면 `APP_GUEST_COOKIE_SECURE=true`, `SameSite=None` 조합을 검토해야 합니다.
+로컬 HTTP 환경에서는 Refresh Token Cookie와 게스트 세션 Cookie 모두 `Secure=false`, `SameSite=Lax`를 사용합니다.
+HTTPS 배포 환경에서 프론트와 백엔드 도메인이 분리되면 두 Cookie 모두 `Secure=true`, `SameSite=None` 조합을 검토해야 합니다.
 
 ## 약속방 상태
 
@@ -525,6 +525,8 @@ Cookie: guestSession={guestSession}
 - 게스트 세션은 같은 브라우저 재접속을 위해 쿠키로 유지
 - 게스트 요청은 `credentials: "include"` 또는 `withCredentials: true` 설정 필요
 - 게스트 토큰을 `localStorage`, `sessionStorage`, JS 변수에 저장하지 않음
+- HTTPS 환경에서 프론트/백엔드 도메인이 분리되면 Cookie는 `Secure=true`, `SameSite=None` 필요
+- `SameSite=None` Cookie는 브라우저 정책상 HTTPS와 함께 사용해야 함
 - Swagger에는 `bearerAuth`와 `guestSessionCookie` 인증 스키마가 함께 표시됨
 - 실제 `.env` 파일은 커밋 금지
 - API 서버 주소는 환경변수로 관리 권장
