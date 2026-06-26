@@ -1,3 +1,3 @@
 package com.eodigakka.global.security;
 
-public record GuestUser(String guestToken) {}
+public record GuestUser(String sessionToken) {}

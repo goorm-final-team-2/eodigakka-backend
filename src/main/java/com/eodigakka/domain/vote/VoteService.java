@@ -57,9 +57,9 @@ public class VoteService {
 
   @Transactional
   public VoteResponse vote(
-      Long appointmentId, AuthUser authUser, String guestToken, VoteRequest request) {
+      Long appointmentId, AuthUser authUser, String guestSessionToken, VoteRequest request) {
     AppointmentMember appointmentMember =
-        appointmentMemberResolver.resolve(appointmentId, authUser, guestToken);
+        appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
     Appointment appointment = getAppointment(appointmentId);
     appointment.validatePlanning();
     validatePlaceCandidate(appointmentId, request.placeCandidateId());
@@ -81,9 +81,9 @@ public class VoteService {
 
   @Transactional(readOnly = true)
   public List<VoteResultResponse> findResults(
-      Long appointmentId, AuthUser authUser, String guestToken) {
+      Long appointmentId, AuthUser authUser, String guestSessionToken) {
     AppointmentMember appointmentMember =
-        appointmentMemberResolver.resolve(appointmentId, authUser, guestToken);
+        appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
     getAppointment(appointmentId);
 
     List<PlaceCandidate> placeCandidates =

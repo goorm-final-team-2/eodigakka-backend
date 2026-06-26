@@ -30,8 +30,8 @@ public class AppointmentMemberService {
 
   @Transactional(readOnly = true)
   public List<AppointmentMemberResponse> findAll(
-      Long appointmentId, AuthUser authUser, String guestToken) {
-    appointmentMemberResolver.resolve(appointmentId, authUser, guestToken);
+      Long appointmentId, AuthUser authUser, String guestSessionToken) {
+    appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
 
     List<AppointmentMember> appointmentMembers =
         appointmentMemberRepository.findByAppointmentIdOrderByJoinedAtAscIdAsc(appointmentId);

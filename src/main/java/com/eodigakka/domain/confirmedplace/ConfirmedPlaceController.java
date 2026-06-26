@@ -2,21 +2,19 @@ package com.eodigakka.domain.confirmedplace;
 
 import com.eodigakka.global.response.ApiResponse;
 import com.eodigakka.global.security.AuthUser;
+import com.eodigakka.global.security.GuestUser;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/appointments/{appointmentId}/confirmed-place")
 public class ConfirmedPlaceController {
-
-  private static final String GUEST_TOKEN_HEADER = "X-Guest-Token";
 
   private final ConfirmedPlaceService confirmedPlaceService;
 
@@ -37,7 +35,12 @@ public class ConfirmedPlaceController {
   public ApiResponse<ConfirmedPlaceResponse> find(
       @PathVariable Long appointmentId,
       @AuthenticationPrincipal AuthUser authUser,
-      @RequestHeader(name = GUEST_TOKEN_HEADER, required = false) String guestToken) {
-    return ApiResponse.success(confirmedPlaceService.find(appointmentId, authUser, guestToken));
+      @AuthenticationPrincipal GuestUser guestUser) {
+    return ApiResponse.success(
+        confirmedPlaceService.find(appointmentId, authUser, guestSessionToken(guestUser)));
+  }
+
+  private String guestSessionToken(GuestUser guestUser) {
+    return guestUser == null ? null : guestUser.sessionToken();
   }
 }

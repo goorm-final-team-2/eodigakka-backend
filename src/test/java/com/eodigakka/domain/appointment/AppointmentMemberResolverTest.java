@@ -7,8 +7,8 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import com.eodigakka.global.error.BusinessException;
+import com.eodigakka.global.error.ErrorCode;
 import com.eodigakka.global.security.AuthUser;
-import com.eodigakka.global.security.MessageDigestSupport;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,16 +22,18 @@ class AppointmentMemberResolverTest {
 
   private static final Long APPOINTMENT_ID = 1L;
   private static final Long USER_ID = 10L;
-  private static final String GUEST_TOKEN = "guest-token";
+  private static final String GUEST_SESSION_TOKEN = "guest-session-token";
   private static final Instant JOINED_AT = Instant.parse("2026-06-21T00:00:00Z");
 
   @Mock private AppointmentMemberRepository appointmentMemberRepository;
+  @Mock private GuestSessionService guestSessionService;
 
   private AppointmentMemberResolver appointmentMemberResolver;
 
   @BeforeEach
   void setUp() {
-    appointmentMemberResolver = new AppointmentMemberResolver(appointmentMemberRepository);
+    appointmentMemberResolver =
+        new AppointmentMemberResolver(appointmentMemberRepository, guestSessionService);
   }
 
   @Test
@@ -43,28 +45,21 @@ class AppointmentMemberResolverTest {
         .willReturn(Optional.of(appointmentMember));
 
     AppointmentMember result =
-        appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, GUEST_TOKEN);
+        appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, GUEST_SESSION_TOKEN);
 
     assertThat(result).isSameAs(appointmentMember);
-    then(appointmentMemberRepository)
-        .should(never())
-        .findByAppointmentIdAndGuestTokenHashAndMemberType(
-            APPOINTMENT_ID,
-            MessageDigestSupport.sha256Hex(GUEST_TOKEN),
-            AppointmentMemberType.GUEST);
+    then(guestSessionService).should(never()).resolve(APPOINTMENT_ID, GUEST_SESSION_TOKEN);
   }
 
   @Test
-  void resolveReturnsGuestAppointmentMemberWhenGuestTokenExists() {
-    String guestTokenHash = MessageDigestSupport.sha256Hex(GUEST_TOKEN);
+  void resolveReturnsGuestAppointmentMemberWhenGuestSessionExists() {
     AppointmentMember appointmentMember =
-        AppointmentMember.createGuest(APPOINTMENT_ID, "guest", guestTokenHash, JOINED_AT);
-    given(
-            appointmentMemberRepository.findByAppointmentIdAndGuestTokenHashAndMemberType(
-                APPOINTMENT_ID, guestTokenHash, AppointmentMemberType.GUEST))
-        .willReturn(Optional.of(appointmentMember));
+        AppointmentMember.createGuest(APPOINTMENT_ID, "guest", "legacy-token-hash", JOINED_AT);
+    given(guestSessionService.resolve(APPOINTMENT_ID, GUEST_SESSION_TOKEN))
+        .willReturn(appointmentMember);
 
-    AppointmentMember result = appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_TOKEN);
+    AppointmentMember result =
+        appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_SESSION_TOKEN);
 
     assertThat(result).isSameAs(appointmentMember);
   }
@@ -80,14 +75,12 @@ class AppointmentMemberResolverTest {
   }
 
   @Test
-  void resolveThrowsBusinessExceptionWhenGuestTokenIsInvalid() {
-    String guestTokenHash = MessageDigestSupport.sha256Hex(GUEST_TOKEN);
-    given(
-            appointmentMemberRepository.findByAppointmentIdAndGuestTokenHashAndMemberType(
-                APPOINTMENT_ID, guestTokenHash, AppointmentMemberType.GUEST))
-        .willReturn(Optional.empty());
+  void resolveThrowsBusinessExceptionWhenGuestSessionIsInvalid() {
+    given(guestSessionService.resolve(APPOINTMENT_ID, GUEST_SESSION_TOKEN))
+        .willThrow(new BusinessException(ErrorCode.APPOINTMENT_MEMBER_NOT_FOUND));
 
-    assertThatThrownBy(() -> appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_TOKEN))
+    assertThatThrownBy(
+            () -> appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_SESSION_TOKEN))
         .isInstanceOf(BusinessException.class);
   }
 
@@ -98,7 +91,7 @@ class AppointmentMemberResolverTest {
   }
 
   @Test
-  void resolveThrowsBusinessExceptionWhenGuestTokenIsBlank() {
+  void resolveThrowsBusinessExceptionWhenGuestSessionTokenIsBlank() {
     assertThatThrownBy(() -> appointmentMemberResolver.resolve(APPOINTMENT_ID, null, " "))
         .isInstanceOf(BusinessException.class);
   }

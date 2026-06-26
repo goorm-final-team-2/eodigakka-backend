@@ -49,10 +49,10 @@ public class PlaceCandidateService {
   public PlaceCandidateResponse create(
       Long appointmentId,
       AuthUser authUser,
-      String guestToken,
+      String guestSessionToken,
       PlaceCandidateCreateRequest request) {
     AppointmentMember appointmentMember =
-        appointmentMemberResolver.resolve(appointmentId, authUser, guestToken);
+        appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
     Appointment appointment = getAppointment(appointmentId);
     appointment.validatePlanning();
     if (placeCandidateRepository.existsByAppointmentIdAndKakaoPlaceId(
@@ -80,8 +80,8 @@ public class PlaceCandidateService {
 
   @Transactional(readOnly = true)
   public List<PlaceCandidateResponse> findAll(
-      Long appointmentId, AuthUser authUser, String guestToken) {
-    appointmentMemberResolver.resolve(appointmentId, authUser, guestToken);
+      Long appointmentId, AuthUser authUser, String guestSessionToken) {
+    appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
     getAppointment(appointmentId);
     return placeCandidateRepository
         .findByAppointmentIdOrderByCreatedAtAscIdAsc(appointmentId)
@@ -92,9 +92,9 @@ public class PlaceCandidateService {
 
   @Transactional
   public void delete(
-      Long appointmentId, Long placeCandidateId, AuthUser authUser, String guestToken) {
+      Long appointmentId, Long placeCandidateId, AuthUser authUser, String guestSessionToken) {
     AppointmentMember appointmentMember =
-        appointmentMemberResolver.resolve(appointmentId, authUser, guestToken);
+        appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
     Appointment appointment = getAppointment(appointmentId);
     appointment.validatePlanning();
     PlaceCandidate placeCandidate =

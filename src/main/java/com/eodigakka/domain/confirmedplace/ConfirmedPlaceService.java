@@ -72,8 +72,9 @@ public class ConfirmedPlaceService {
   }
 
   @Transactional(readOnly = true)
-  public ConfirmedPlaceResponse find(Long appointmentId, AuthUser authUser, String guestToken) {
-    appointmentMemberResolver.resolve(appointmentId, authUser, guestToken);
+  public ConfirmedPlaceResponse find(
+      Long appointmentId, AuthUser authUser, String guestSessionToken) {
+    appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
     getAppointment(appointmentId);
     return confirmedPlaceRepository
         .findByAppointmentId(appointmentId)

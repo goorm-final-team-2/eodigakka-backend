@@ -4,6 +4,7 @@ import com.eodigakka.global.security.CustomAccessDeniedHandler;
 import com.eodigakka.global.security.CustomAuthenticationEntryPoint;
 import com.eodigakka.global.security.GuestAuthenticationFilter;
 import com.eodigakka.global.security.JwtAuthenticationFilter;
+import com.eodigakka.global.security.SecurityAuthority;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -64,8 +65,20 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/appointments/guests")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/appointments/*/members")
+                    .hasAnyAuthority(SecurityAuthority.USER, SecurityAuthority.GUEST)
+                    .requestMatchers("/api/appointments/*/place-candidates/**")
+                    .hasAnyAuthority(SecurityAuthority.USER, SecurityAuthority.GUEST)
+                    .requestMatchers(HttpMethod.PUT, "/api/appointments/*/votes")
+                    .hasAnyAuthority(SecurityAuthority.USER, SecurityAuthority.GUEST)
+                    .requestMatchers(HttpMethod.GET, "/api/appointments/*/votes/results")
+                    .hasAnyAuthority(SecurityAuthority.USER, SecurityAuthority.GUEST)
+                    .requestMatchers(HttpMethod.GET, "/api/appointments/*/confirmed-place")
+                    .hasAnyAuthority(SecurityAuthority.USER, SecurityAuthority.GUEST)
+                    .requestMatchers("/api/appointments/*/locations/**")
+                    .hasAnyAuthority(SecurityAuthority.USER, SecurityAuthority.GUEST)
                     .anyRequest()
-                    .authenticated())
+                    .hasAuthority(SecurityAuthority.USER))
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterAfter(guestAuthenticationFilter, JwtAuthenticationFilter.class)
         .build();
