@@ -113,7 +113,6 @@ DB_PASSWORD={rds-master-password}
 
 Swagger/OpenAPI에는 로그인 사용자용 `bearerAuth`와 게스트 사용자용 `guestSessionCookie` 인증 스키마가 함께 노출됩니다.
 프론트 연동 세부 계약은 `docs/api-guide.md`를 기준으로 확인합니다.
-EC2/RDS/Nginx/도메인 배포 기록은 `docs/deployment-guide.md`를 기준으로 관리합니다.
 
 ## 테스트와 빌드
 
