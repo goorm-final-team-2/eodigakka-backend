@@ -77,4 +77,13 @@ class WebSocketAuthenticationServiceTest {
     assertThatThrownBy(() -> authenticationService.authenticate(accessor))
         .isInstanceOf(BusinessException.class);
   }
+
+  @Test
+  void authenticateDoesNotUseGuestSessionNativeHeader() {
+    StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
+    accessor.addNativeHeader("X-Guest-Session", "guest-token");
+
+    assertThatThrownBy(() -> authenticationService.authenticate(accessor))
+        .isInstanceOf(BusinessException.class);
+  }
 }
