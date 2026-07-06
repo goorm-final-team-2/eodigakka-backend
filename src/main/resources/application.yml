@@ -53,4 +53,5 @@ app:
       client-secret: ${KAKAO_CLIENT_SECRET:}
       token-uri: https://kauth.kakao.com/oauth/token
       user-info-uri: https://kapi.kakao.com/v2/user/me
+      local-keyword-search-uri: https://dapi.kakao.com/v2/local/search/keyword.json
       allowed-redirect-uris: ${KAKAO_ALLOWED_REDIRECT_URIS:http://localhost:5173/oauth/kakao/callback}

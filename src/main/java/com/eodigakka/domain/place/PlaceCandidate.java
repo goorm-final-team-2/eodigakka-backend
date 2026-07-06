@@ -8,6 +8,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
+/**
+ * Appointment place candidate suggested by a participant.
+ *
+ * <p>The fields intentionally mirror Kakao Local place-search data so a frontend can search Kakao
+ * places, submit the selected result, and persist it without losing the original Kakao place
+ * identity.
+ */
 @Entity
 @Table(name = "place_candidates")
 public class PlaceCandidate {
