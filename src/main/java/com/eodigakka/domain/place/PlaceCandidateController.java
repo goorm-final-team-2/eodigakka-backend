@@ -33,7 +33,9 @@ public class PlaceCandidateController {
       summary = "장소 후보 등록",
       description =
           """
+          약속방 참여자 또는 게스트가 장소 후보를 등록합니다.
           카카오 장소 검색 결과 item에서 `distance`를 제외한 필드를 전달해 약속 장소 후보로 등록합니다.
+          장소 후보 등록은 약속방이 PLANNING 상태일 때만 가능합니다.
           응답의 `addedByMe`와 `deletable`은 현재 요청자 기준 상태입니다.
           """,
       responses = {
@@ -71,7 +73,7 @@ public class PlaceCandidateController {
       summary = "장소 후보 목록 조회",
       description =
           """
-          약속 장소 후보 목록을 조회합니다.
+          약속방 참여자 또는 게스트가 약속 장소 후보 목록을 조회합니다.
           각 후보의 `addedByMe`와 `deletable`은 현재 요청자 기준 상태입니다.
           """)
   public ApiResponse<List<PlaceCandidateResponse>> findAll(
@@ -83,7 +85,13 @@ public class PlaceCandidateController {
   }
 
   @DeleteMapping("/{placeCandidateId}")
-  @Operation(summary = "장소 후보 삭제", description = "후보 등록자 또는 약속 호스트가 장소 후보를 삭제합니다.")
+  @Operation(
+      summary = "장소 후보 삭제",
+      description =
+          """
+          약속방 참여자 또는 게스트가 장소 후보를 삭제합니다.
+          후보 등록자 또는 약속 호스트만 삭제할 수 있으며, 약속방이 PLANNING 상태일 때만 가능합니다.
+          """)
   public ApiResponse<Void> delete(
       @PathVariable Long appointmentId,
       @PathVariable Long placeCandidateId,

@@ -21,5 +21,9 @@ class OpenApiConfigTest {
     assertThat(guestSessionCookie.getType()).isEqualTo(SecurityScheme.Type.APIKEY);
     assertThat(guestSessionCookie.getIn()).isEqualTo(SecurityScheme.In.COOKIE);
     assertThat(guestSessionCookie.getName()).isEqualTo("guestSession");
+    assertThat(guestSessionCookie.getDescription())
+        .contains("guestSession HttpOnly Cookie")
+        .contains("X-Guest-Token")
+        .contains("X-Guest-Session");
   }
 }

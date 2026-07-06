@@ -28,7 +28,9 @@ public class OpenApiConfig {
             .name("guestSession")
             .type(SecurityScheme.Type.APIKEY)
             .in(SecurityScheme.In.COOKIE)
-            .description("게스트 사용자는 게스트 입장 API에서 발급된 guestSession HttpOnly Cookie로 인증합니다.");
+            .description(
+                "게스트 사용자는 게스트 입장 API에서 발급된 guestSession HttpOnly Cookie로 인증합니다. "
+                    + "X-Guest-Token 또는 X-Guest-Session 헤더는 사용하지 않습니다.");
 
     return new OpenAPI()
         .info(
@@ -40,6 +42,7 @@ public class OpenApiConfig {
 
                     로그인 사용자는 bearerAuth를 사용합니다.
                     게스트 사용자는 guestSession HttpOnly Cookie를 사용하며, 프론트 요청에는 credentials 포함이 필요합니다.
+                    게스트 인증에 X-Guest-Token 또는 X-Guest-Session 헤더를 사용하지 않습니다.
                     """)
                 .version("v1"))
         .components(

@@ -2,6 +2,24 @@
 
 프론트 연동을 위한 백엔드 API 계약 문서입니다.
 
+## 기본 URL
+
+로컬 개발:
+
+```text
+http://localhost:8080
+ws://localhost:8080/ws
+```
+
+배포 환경:
+
+```text
+https://api.eodigakka.xyz
+wss://api.eodigakka.xyz/ws
+```
+
+프론트에서는 API 서버 주소를 환경변수로 관리합니다.
+
 ## 공통 응답
 
 성공 응답은 `data`, `message` 형식입니다.
@@ -44,6 +62,7 @@ Cookie: guestSession={guestSession}
 
 프론트 저장소에는 게스트 토큰을 저장하지 않습니다.
 게스트 세션 유지와 만료 검증은 백엔드가 담당합니다.
+`X-Guest-Token`, `X-Guest-Session` 헤더는 프론트 연동 계약으로 사용하지 않습니다.
 
 로컬 HTTP 환경에서는 Refresh Token Cookie와 게스트 세션 Cookie 모두 `Secure=false`, `SameSite=Lax`를 사용합니다.
 HTTPS 배포 환경에서 프론트와 백엔드 도메인이 분리되면 두 Cookie 모두 `Secure=true`, `SameSite=None` 조합을 검토해야 합니다.
@@ -57,6 +76,27 @@ PLANNING -> CONFIRMED -> CLOSED
 - `PLANNING`: 장소 후보 등록/삭제, 투표, 확정 장소 선택 가능
 - `CONFIRMED`: 위치 공유/조회 가능
 - `CLOSED`: 게스트 참여, 위치 공유/조회 불가
+
+## 권한 요약
+
+| 기능 | 로그인 사용자 | 게스트 사용자 | 비고 |
+| --- | --- | --- | --- |
+| 카카오 로그인 | 가능 | 불가 | 로그인/회원가입 통합 |
+| Access Token 재발급 | 가능 | 불가 | Refresh Token Cookie 기준 |
+| 약속방 생성 | 가능 | 불가 | 로그인 사용자만 가능 |
+| 약속방 목록/상세 조회 | 가능 | 불가 | 로그인 사용자 본인 약속방 기준 |
+| 약속방 수정/삭제/종료 | 방장만 가능 | 불가 | 게스트는 방장 불가 |
+| 초대 코드 로그인 참여 | 가능 | 불가 | `Authorization` 필요 |
+| 초대 코드 미리보기 | 가능 | 가능 | 로그인 없이 호출 가능 |
+| 게스트 입장 | 불가 | 가능 | 성공 시 `guestSession` Cookie 발급 |
+| 참여자 목록 조회 | 참여자만 가능 | 참여자만 가능 | `appointmentMember` 기준 |
+| 장소 검색 | 참여자만 가능 | 참여자만 가능 | 검색 결과는 저장하지 않음 |
+| 장소 후보 등록/목록/삭제 | 참여자만 가능 | 참여자만 가능 | 삭제는 등록자 또는 방장 |
+| 투표/투표 취소/결과 조회 | 참여자만 가능 | 참여자만 가능 | 투표 변경은 PUT으로 처리 |
+| 확정 장소 선택 | 방장만 가능 | 불가 | 성공 시 `CONFIRMED` |
+| 확정 장소 조회 | 참여자만 가능 | 참여자만 가능 | 확정 장소가 있어야 함 |
+| 위치 HTTP fallback | 참여자만 가능 | 참여자만 가능 | `CONFIRMED` 상태만 가능 |
+| WebSocket 위치 공유 | 참여자만 가능 | 참여자만 가능 | STOMP 인증 후 사용 |
 
 ## Auth API
 
@@ -293,6 +333,69 @@ POST /api/appointments/guests
 - 쿠키가 없거나 유효하지 않으면 `GUEST_SESSION_INVALID`가 내려갈 수 있으며, 프론트는 게스트 입장 화면으로 유도합니다.
 - 쿠키가 만료되었거나 폐기된 세션이면 `GUEST_SESSION_EXPIRED`가 내려갈 수 있으며, 프론트는 다시 게스트 입장을 안내합니다.
 - 같은 약속방에서 이미 사용 중인 게스트 이름으로 새로 입장하면 `GUEST_NAME_ALREADY_EXISTS`가 내려갑니다.
+
+## Place Search API
+
+카카오 Local API 기반 장소 검색입니다.
+로그인 사용자와 게스트 모두 호출할 수 있지만, 해당 약속방 참여자여야 합니다.
+검색 결과는 DB에 저장되지 않으며, 프론트에서 선택한 장소를 장소 후보 등록 API에 전달할 때 사용합니다.
+
+### 카카오 장소 검색
+
+```http
+GET /api/appointments/{appointmentId}/places/search?query=강남역
+Authorization: Bearer {accessToken}
+```
+
+또는:
+
+```http
+Cookie: guestSession={guestSession}
+```
+
+요청 파라미터:
+
+| 이름 | 필수 | 설명 |
+| --- | --- | --- |
+| `query` | 필수 | 검색 키워드 |
+| `x` | 선택 | 중심 좌표 경도 |
+| `y` | 선택 | 중심 좌표 위도 |
+| `radius` | 선택 | 중심 좌표 기준 검색 반경, 최대 20000m |
+| `page` | 선택 | 결과 페이지, 1~45 |
+| `size` | 선택 | 페이지당 결과 수, 1~15 |
+| `sort` | 선택 | `accuracy` 또는 `distance` |
+| `categoryGroupCode` | 선택 | 카카오 카테고리 그룹 코드 |
+
+`sort=distance` 또는 `radius`를 사용할 때는 `x`, `y`를 함께 전달해야 합니다.
+
+응답:
+
+```json
+{
+  "data": {
+    "items": [
+      {
+        "kakaoPlaceId": "26338954",
+        "name": "강남역",
+        "address": "서울 강남구 역삼동 858",
+        "roadAddress": "서울 강남구 강남대로 396",
+        "category": "교통,수송 > 지하철,전철 > 수도권2호선",
+        "placeUrl": "https://place.map.kakao.com/26338954",
+        "phone": "02-6110-2221",
+        "latitude": 37.4979,
+        "longitude": 127.0276,
+        "distance": 120
+      }
+    ],
+    "page": 1,
+    "size": 15,
+    "totalCount": 100,
+    "pageableCount": 45,
+    "isEnd": false
+  },
+  "message": "success"
+}
+```
 
 ## Place Candidate API
 
@@ -537,6 +640,91 @@ Cookie: guestSession={guestSession}
 }
 ```
 
+## WebSocket/STOMP Location API
+
+실시간 위치 공유는 WebSocket/STOMP를 사용합니다.
+HTTP 위치 API는 WebSocket 연결 실패 또는 재조회가 필요한 경우 fallback으로 사용할 수 있습니다.
+위치 공유는 약속방이 `CONFIRMED` 상태일 때만 가능합니다.
+
+### 연결 endpoint
+
+로컬:
+
+```text
+ws://localhost:8080/ws
+```
+
+배포:
+
+```text
+wss://api.eodigakka.xyz/ws
+```
+
+### STOMP CONNECT 인증
+
+로그인 사용자는 STOMP CONNECT native header에 Access Token을 전달합니다.
+
+```text
+Authorization: Bearer {accessToken}
+```
+
+게스트 사용자는 `guestSession` HttpOnly Cookie로 인증합니다.
+프론트는 쿠키 값을 직접 읽어서 STOMP header에 넣지 않습니다.
+브라우저가 WebSocket handshake에 쿠키를 포함할 수 있도록 게스트 입장 요청부터 같은 API origin 기준으로 `credentials: "include"` 또는 `withCredentials: true` 설정을 유지합니다.
+
+```javascript
+// fetch 예시
+await fetch(`${API_BASE_URL}/api/appointments/guests`, {
+  method: "POST",
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ inviteCode: "A7K2P9QX", guestName: "철수" })
+});
+```
+
+### 위치 publish
+
+```text
+PUB /app/appointments/{appointmentId}/locations
+```
+
+payload:
+
+```json
+{
+  "latitude": 37.4979,
+  "longitude": 127.0276,
+  "accuracy": 20.5
+}
+```
+
+### 위치 subscribe
+
+```text
+SUB /topic/appointments/{appointmentId}/locations
+```
+
+message:
+
+```json
+{
+  "appointmentId": 10,
+  "memberId": 100,
+  "latitude": 37.4979,
+  "longitude": 127.0276,
+  "accuracy": 20.5,
+  "updatedAt": "2026-06-21T12:00:00Z"
+}
+```
+
+### WebSocket 연동 주의사항
+
+- `/ws` handshake는 열려 있지만, STOMP `CONNECT`, `SEND`, `SUBSCRIBE` 단계에서 인증과 약속방 참여자 검증을 수행합니다.
+- 로그인 사용자는 `Authorization` header, 게스트 사용자는 `guestSession` Cookie 기준입니다.
+- 게스트 인증에 `X-Guest-Token`, `X-Guest-Session` header를 사용하지 않습니다.
+- 약속방 참여자가 아닌 사용자는 해당 약속방 위치 topic 구독 또는 publish가 거부됩니다.
+- 현재는 단일 서버 기준 simple broker를 사용합니다. 서버 다중화 시 Redis Pub/Sub 또는 외부 broker 검토가 필요합니다.
+
 ## 상태별 가능 작업
 
 | 작업 | PLANNING | CONFIRMED | CLOSED |
@@ -556,6 +744,7 @@ Cookie: guestSession={guestSession}
 
 - 로그인 사용자는 `Authorization: Bearer {accessToken}` 사용
 - 게스트 사용자는 `guestSession` HttpOnly Cookie 사용
+- 게스트 인증에 `X-Guest-Token`, `X-Guest-Session` 헤더를 사용하지 않음
 - 초대 코드는 방 입장/미리보기용이고 게스트 본인 식별용이 아님
 - 게스트 본인 식별은 서버가 발급한 `guestSession`으로 처리
 - 게스트 세션은 같은 브라우저 재접속을 위해 쿠키로 유지
