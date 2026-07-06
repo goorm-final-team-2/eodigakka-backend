@@ -58,6 +58,8 @@ public class SecurityConfig {
                     .requestMatchers(
                         "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/health")
                     .permitAll()
+                    .requestMatchers("/ws/**")
+                    .permitAll()
                     .requestMatchers(
                         HttpMethod.POST, "/api/auth/kakao", "/api/auth/refresh", "/api/auth/logout")
                     .permitAll()
