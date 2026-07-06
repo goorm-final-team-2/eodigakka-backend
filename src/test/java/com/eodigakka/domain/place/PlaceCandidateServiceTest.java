@@ -83,12 +83,31 @@ class PlaceCandidateServiceTest {
     assertThat(response.appointmentId()).isEqualTo(APPOINTMENT_ID);
     assertThat(response.kakaoPlaceId()).isEqualTo("12345");
     assertThat(response.name()).isEqualTo("강남역");
+    assertThat(response.address()).isEqualTo("서울 강남구 강남대로 396");
+    assertThat(response.roadAddress()).isEqualTo("서울 강남구 강남대로 396");
+    assertThat(response.category()).isEqualTo("지하철역");
+    assertThat(response.placeUrl()).isEqualTo("https://place.map.kakao.com/12345");
+    assertThat(response.phone()).isEqualTo("02-123-4567");
+    assertThat(response.latitude()).isEqualTo(37.4979);
+    assertThat(response.longitude()).isEqualTo(127.0276);
     assertThat(response.addedByMemberId()).isEqualTo(MEMBER_ID);
+    assertThat(response.addedByMe()).isTrue();
+    assertThat(response.deletable()).isTrue();
     assertThat(response.createdAt()).isEqualTo(NOW);
 
     ArgumentCaptor<PlaceCandidate> candidateCaptor = ArgumentCaptor.forClass(PlaceCandidate.class);
     verify(placeCandidateRepository).save(candidateCaptor.capture());
-    assertThat(candidateCaptor.getValue().getAddedByMemberId()).isEqualTo(MEMBER_ID);
+    PlaceCandidate savedCandidate = candidateCaptor.getValue();
+    assertThat(savedCandidate.getKakaoPlaceId()).isEqualTo("12345");
+    assertThat(savedCandidate.getName()).isEqualTo("강남역");
+    assertThat(savedCandidate.getAddress()).isEqualTo("서울 강남구 강남대로 396");
+    assertThat(savedCandidate.getRoadAddress()).isEqualTo("서울 강남구 강남대로 396");
+    assertThat(savedCandidate.getCategory()).isEqualTo("지하철역");
+    assertThat(savedCandidate.getPlaceUrl()).isEqualTo("https://place.map.kakao.com/12345");
+    assertThat(savedCandidate.getPhone()).isEqualTo("02-123-4567");
+    assertThat(savedCandidate.getLatitude()).isEqualTo(37.4979);
+    assertThat(savedCandidate.getLongitude()).isEqualTo(127.0276);
+    assertThat(savedCandidate.getAddedByMemberId()).isEqualTo(MEMBER_ID);
   }
 
   @Test
@@ -108,6 +127,8 @@ class PlaceCandidateServiceTest {
         placeCandidateService.create(APPOINTMENT_ID, null, GUEST_TOKEN, request);
 
     assertThat(response.addedByMemberId()).isEqualTo(MEMBER_ID);
+    assertThat(response.addedByMe()).isTrue();
+    assertThat(response.deletable()).isTrue();
   }
 
   @Test
@@ -170,6 +191,48 @@ class PlaceCandidateServiceTest {
     assertThat(responses).hasSize(1);
     assertThat(responses.getFirst().id()).isEqualTo(1L);
     assertThat(responses.getFirst().name()).isEqualTo("강남역");
+    assertThat(responses.getFirst().addedByMe()).isTrue();
+    assertThat(responses.getFirst().deletable()).isTrue();
+  }
+
+  @Test
+  void findAllMarksHostCanDeleteOtherMembersCandidate() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    Appointment appointment = appointment(AppointmentStatus.CLOSED);
+    PlaceCandidate placeCandidate = placeCandidate(OTHER_MEMBER_ID);
+    ReflectionTestUtils.setField(placeCandidate, "id", 1L);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(hostMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+    given(placeCandidateRepository.findByAppointmentIdOrderByCreatedAtAscIdAsc(APPOINTMENT_ID))
+        .willReturn(List.of(placeCandidate));
+
+    List<PlaceCandidateResponse> responses =
+        placeCandidateService.findAll(APPOINTMENT_ID, authUser, null);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.getFirst().addedByMe()).isFalse();
+    assertThat(responses.getFirst().deletable()).isTrue();
+  }
+
+  @Test
+  void findAllMarksOtherMembersCandidateAsNotDeletableForNonHost() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    Appointment appointment = appointment(AppointmentStatus.CLOSED);
+    PlaceCandidate placeCandidate = placeCandidate(OTHER_MEMBER_ID);
+    ReflectionTestUtils.setField(placeCandidate, "id", 1L);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+    given(placeCandidateRepository.findByAppointmentIdOrderByCreatedAtAscIdAsc(APPOINTMENT_ID))
+        .willReturn(List.of(placeCandidate));
+
+    List<PlaceCandidateResponse> responses =
+        placeCandidateService.findAll(APPOINTMENT_ID, authUser, null);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.getFirst().addedByMe()).isFalse();
+    assertThat(responses.getFirst().deletable()).isFalse();
   }
 
   @Test
