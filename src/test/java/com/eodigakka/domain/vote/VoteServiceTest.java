@@ -180,6 +180,22 @@ class VoteServiceTest {
   }
 
   @Test
+  void voteDoesNotLookupOrChangeExistingVoteWhenAppointmentIsConfirmed() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    VoteRequest request = new VoteRequest(OTHER_PLACE_CANDIDATE_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID))
+        .willReturn(Optional.of(appointment(AppointmentStatus.CONFIRMED)));
+
+    assertThatThrownBy(() -> voteService.vote(APPOINTMENT_ID, authUser, null, request))
+        .isInstanceOf(BusinessException.class);
+
+    verify(voteRepository, never()).findByAppointmentIdAndMemberId(APPOINTMENT_ID, MEMBER_ID);
+    verify(voteRepository, never()).save(any());
+  }
+
+  @Test
   void voteThrowsBusinessExceptionWhenPlaceCandidateDoesNotExistInAppointment() {
     AuthUser authUser = new AuthUser(USER_ID);
     VoteRequest request = new VoteRequest(PLACE_CANDIDATE_ID);

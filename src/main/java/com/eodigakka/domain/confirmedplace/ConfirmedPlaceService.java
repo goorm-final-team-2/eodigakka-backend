@@ -4,6 +4,7 @@ import com.eodigakka.domain.appointment.Appointment;
 import com.eodigakka.domain.appointment.AppointmentAccessValidator;
 import com.eodigakka.domain.appointment.AppointmentMemberResolver;
 import com.eodigakka.domain.appointment.AppointmentRepository;
+import com.eodigakka.domain.place.PlaceCandidate;
 import com.eodigakka.domain.place.PlaceCandidateRepository;
 import com.eodigakka.global.error.BusinessException;
 import com.eodigakka.global.error.ErrorCode;
@@ -61,14 +62,14 @@ public class ConfirmedPlaceService {
     appointmentAccessValidator.validateHost(appointmentId, userId);
     Appointment appointment = getAppointment(appointmentId);
     appointment.validatePlanning();
-    validatePlaceCandidate(appointmentId, request.placeCandidateId());
+    PlaceCandidate placeCandidate = getPlaceCandidate(appointmentId, request.placeCandidateId());
 
     Instant now = Instant.now(clock);
     ConfirmedPlace confirmedPlace =
         confirmedPlaceRepository.save(
             ConfirmedPlace.create(appointmentId, request.placeCandidateId(), userId, now));
     appointment.confirm(now);
-    return ConfirmedPlaceResponse.from(confirmedPlace);
+    return ConfirmedPlaceResponse.from(confirmedPlace, placeCandidate);
   }
 
   @Transactional(readOnly = true)
@@ -76,18 +77,19 @@ public class ConfirmedPlaceService {
       Long appointmentId, AuthUser authUser, String guestSessionToken) {
     appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
     getAppointment(appointmentId);
-    return confirmedPlaceRepository
-        .findByAppointmentId(appointmentId)
-        .map(ConfirmedPlaceResponse::from)
-        .orElseThrow(() -> new BusinessException(ErrorCode.CONFIRMED_PLACE_NOT_FOUND));
+    ConfirmedPlace confirmedPlace =
+        confirmedPlaceRepository
+            .findByAppointmentId(appointmentId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.CONFIRMED_PLACE_NOT_FOUND));
+    PlaceCandidate placeCandidate =
+        getPlaceCandidate(appointmentId, confirmedPlace.getPlaceCandidateId());
+    return ConfirmedPlaceResponse.from(confirmedPlace, placeCandidate);
   }
 
-  private void validatePlaceCandidate(Long appointmentId, Long placeCandidateId) {
-    if (placeCandidateRepository
+  private PlaceCandidate getPlaceCandidate(Long appointmentId, Long placeCandidateId) {
+    return placeCandidateRepository
         .findByIdAndAppointmentId(placeCandidateId, appointmentId)
-        .isEmpty()) {
-      throw new BusinessException(ErrorCode.PLACE_CANDIDATE_NOT_FOUND);
-    }
+        .orElseThrow(() -> new BusinessException(ErrorCode.PLACE_CANDIDATE_NOT_FOUND));
   }
 
   private Appointment getAppointment(Long appointmentId) {
