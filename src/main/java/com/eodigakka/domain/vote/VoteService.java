@@ -11,6 +11,7 @@ import com.eodigakka.global.error.ErrorCode;
 import com.eodigakka.global.security.AuthUser;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -97,6 +98,7 @@ public class VoteService {
             .map(Vote::getPlaceCandidateId);
 
     return placeCandidates.stream()
+        .sorted(resultOrder(voteCountByPlaceCandidateId))
         .map(
             placeCandidate ->
                 new VoteResultResponse(
@@ -104,6 +106,26 @@ public class VoteService {
                     voteCountByPlaceCandidateId.getOrDefault(placeCandidate.getId(), 0L),
                     votedPlaceCandidateId.filter(placeCandidate.getId()::equals).isPresent()))
         .toList();
+  }
+
+  @Transactional
+  public void cancel(Long appointmentId, AuthUser authUser, String guestSessionToken) {
+    AppointmentMember appointmentMember =
+        appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
+    Appointment appointment = getAppointment(appointmentId);
+    appointment.validatePlanning();
+    voteRepository
+        .findByAppointmentIdAndMemberId(appointmentId, appointmentMember.getId())
+        .ifPresent(voteRepository::delete);
+  }
+
+  private Comparator<PlaceCandidate> resultOrder(Map<Long, Long> voteCountByPlaceCandidateId) {
+    return Comparator.comparing(
+            (PlaceCandidate placeCandidate) ->
+                voteCountByPlaceCandidateId.getOrDefault(placeCandidate.getId(), 0L))
+        .reversed()
+        .thenComparing(PlaceCandidate::getCreatedAt)
+        .thenComparing(PlaceCandidate::getId);
   }
 
   private Vote changeVote(Vote vote, Long placeCandidateId) {
