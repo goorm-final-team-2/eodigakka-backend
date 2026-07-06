@@ -16,6 +16,7 @@ class KakaoPropertiesTest {
             "",
             URI.create("https://kauth.kakao.com/oauth/token"),
             URI.create("https://kapi.kakao.com/v2/user/me"),
+            URI.create("https://dapi.kakao.com/v2/local/search/keyword.json"),
             List.of("http://localhost:5173/oauth/kakao/callback"));
 
     assertThat(properties.isAllowedRedirectUri("http://localhost:5173/oauth/kakao/callback"))
@@ -32,6 +33,7 @@ class KakaoPropertiesTest {
             "",
             URI.create("https://kauth.kakao.com/oauth/token"),
             URI.create("https://kapi.kakao.com/v2/user/me"),
+            URI.create("https://dapi.kakao.com/v2/local/search/keyword.json"),
             List.of(" http://localhost:5173/oauth/kakao/callback "));
 
     assertThat(properties.isAllowedRedirectUri("http://localhost:5173/oauth/kakao/callback"))
