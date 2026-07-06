@@ -5,6 +5,7 @@ import com.eodigakka.global.error.BusinessException;
 import com.eodigakka.global.error.ErrorCode;
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -15,7 +16,7 @@ import org.springframework.util.StringUtils;
 @Component
 public class WebSocketAuthenticationService {
 
-  public static final String GUEST_SESSION_HEADER = "X-Guest-Session";
+  public static final String GUEST_SESSION_ATTRIBUTE = "guestSession";
 
   private static final String AUTHORIZATION_HEADER = "Authorization";
   private static final String COOKIE_HEADER = "Cookie";
@@ -36,7 +37,7 @@ public class WebSocketAuthenticationService {
       return authenticateUser(authorizationHeader);
     }
 
-    String guestSessionToken = firstNativeHeader(accessor, GUEST_SESSION_HEADER);
+    String guestSessionToken = sessionAttribute(accessor, GUEST_SESSION_ATTRIBUTE);
     if (!StringUtils.hasText(guestSessionToken)) {
       guestSessionToken = findGuestSessionToken(firstNativeHeader(accessor, COOKIE_HEADER));
     }
@@ -74,6 +75,15 @@ public class WebSocketAuthenticationService {
       return null;
     }
     return values.getFirst();
+  }
+
+  private String sessionAttribute(StompHeaderAccessor accessor, String name) {
+    Map<String, Object> sessionAttributes = accessor.getSessionAttributes();
+    if (sessionAttributes == null) {
+      return null;
+    }
+    Object value = sessionAttributes.get(name);
+    return value instanceof String stringValue ? stringValue : null;
   }
 
   private String findGuestSessionToken(String cookieHeader) {

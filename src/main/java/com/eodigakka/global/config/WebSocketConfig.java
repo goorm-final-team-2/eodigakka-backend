@@ -1,5 +1,6 @@
 package com.eodigakka.global.config;
 
+import com.eodigakka.global.security.GuestSessionHandshakeInterceptor;
 import com.eodigakka.global.security.WebSocketSecurityInterceptor;
 import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,12 +16,15 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
   private final WebSocketSecurityInterceptor webSocketSecurityInterceptor;
+  private final GuestSessionHandshakeInterceptor guestSessionHandshakeInterceptor;
   private final String[] allowedOrigins;
 
   public WebSocketConfig(
       WebSocketSecurityInterceptor webSocketSecurityInterceptor,
+      GuestSessionHandshakeInterceptor guestSessionHandshakeInterceptor,
       @Value("${app.cors.allowed-origins}") String allowedOrigins) {
     this.webSocketSecurityInterceptor = webSocketSecurityInterceptor;
+    this.guestSessionHandshakeInterceptor = guestSessionHandshakeInterceptor;
     this.allowedOrigins =
         Arrays.stream(allowedOrigins.split(","))
             .map(String::trim)
@@ -36,7 +40,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
   @Override
   public void registerStompEndpoints(StompEndpointRegistry registry) {
-    registry.addEndpoint("/ws").setAllowedOrigins(allowedOrigins);
+    registry
+        .addEndpoint("/ws")
+        .addInterceptors(guestSessionHandshakeInterceptor)
+        .setAllowedOrigins(allowedOrigins);
   }
 
   @Override

@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://eodigakka-postgrew:5432/eodigakka}
+    url: ${DB_URL:jdbc:postgresql://eodigakka-postgres:5432/eodigakka}
     username: ${DB_USERNAME:eodigakka}
     password: ${DB_PASSWORD:eodigakka}
   data:

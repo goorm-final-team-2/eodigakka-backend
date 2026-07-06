@@ -69,6 +69,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/appointments/guests")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/appointments/*/places/search")
+                    .hasAnyAuthority(SecurityAuthority.USER, SecurityAuthority.GUEST)
                     .requestMatchers(HttpMethod.GET, "/api/appointments/*/members")
                     .hasAnyAuthority(SecurityAuthority.USER, SecurityAuthority.GUEST)
                     .requestMatchers("/api/appointments/*/place-candidates/**")
