@@ -10,6 +10,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -57,9 +59,11 @@ class WebSocketAuthenticationServiceTest {
   }
 
   @Test
-  void authenticateGuestFromExplicitGuestSessionHeader() {
+  void authenticateGuestFromHandshakeSessionAttribute() {
     StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
-    accessor.addNativeHeader(WebSocketAuthenticationService.GUEST_SESSION_HEADER, "guest-token");
+    accessor.setSessionAttributes(
+        new HashMap<>(
+            Map.of(WebSocketAuthenticationService.GUEST_SESSION_ATTRIBUTE, "guest-token")));
 
     Authentication authentication = authenticationService.authenticate(accessor);
 
