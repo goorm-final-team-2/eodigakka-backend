@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://eodigakka-postgrew:5432/eodigakka}
+    username: ${DB_USERNAME:eodigakka}
+    password: ${DB_PASSWORD:eodigakka}
+  data:
+    redis:
+      host: ${REDIS_HOST:eodigakka-redis}
+      port: ${REDIS_PORT:6379}
+
+logging:
+  level:
+    com.eodigakka: debug
