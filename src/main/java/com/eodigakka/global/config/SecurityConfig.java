@@ -61,6 +61,8 @@ public class SecurityConfig {
                     .requestMatchers(
                         HttpMethod.POST, "/api/auth/kakao", "/api/auth/refresh", "/api/auth/logout")
                     .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/dev/auth/login")
+                    .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/appointments/invite/*")
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/appointments/guests")
