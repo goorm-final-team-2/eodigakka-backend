@@ -15,6 +15,11 @@ services:
     command: sleep infinity
 
     environment:
+
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      KAKAO_ALLOWED_REDIRECT_URIS: ${KAKAO_ALLOWED_REDIRECT_URIS}
+
       SPRING_PROFILES_ACTIVE: dev
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-eodigakka}
       DB_USERNAME: ${POSTGRES_USER:-eodigakka}

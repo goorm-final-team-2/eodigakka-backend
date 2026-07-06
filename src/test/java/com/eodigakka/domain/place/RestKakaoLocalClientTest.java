@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
@@ -15,10 +16,15 @@ import com.eodigakka.global.error.ErrorCode;
 import java.net.URI;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
+@ExtendWith(OutputCaptureExtension.class)
 class RestKakaoLocalClientTest {
 
   @Test
@@ -77,6 +83,44 @@ class RestKakaoLocalClientTest {
         .extracting("errorCode")
         .isEqualTo(ErrorCode.KAKAO_LOCAL_SEARCH_FAILED);
     server.verify();
+  }
+
+  @Test
+  void searchKeywordLogsKakaoErrorResponseAtDebug(CapturedOutput output) {
+    ch.qos.logback.classic.Logger logger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(RestKakaoLocalClient.class);
+    ch.qos.logback.classic.Level previousLevel = logger.getLevel();
+    logger.setLevel(ch.qos.logback.classic.Level.DEBUG);
+    RestClient.Builder builder = RestClient.builder();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+    RestKakaoLocalClient client = new RestKakaoLocalClient(properties(), builder);
+    try {
+      server
+          .expect(requestTo(containsString("/v2/local/search/keyword.json")))
+          .andRespond(
+              withBadRequest()
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .body(
+                      """
+                      {"errorType":"InvalidArgument","message":"query parameter is required"}
+                      """));
+      PlaceSearchRequest request =
+          PlaceSearchRequest.of("강남역", null, null, null, null, null, null, null);
+
+      assertThatThrownBy(() -> client.searchKeyword(request))
+          .isInstanceOf(BusinessException.class)
+          .extracting("errorCode")
+          .isEqualTo(ErrorCode.KAKAO_LOCAL_SEARCH_FAILED);
+
+      assertThat(output)
+          .contains("Kakao Local search failed")
+          .contains("400 BAD_REQUEST")
+          .contains("InvalidArgument")
+          .contains("query parameter is required");
+      server.verify();
+    } finally {
+      logger.setLevel(previousLevel);
+    }
   }
 
   private KakaoProperties properties() {

@@ -4,15 +4,21 @@ import com.eodigakka.domain.auth.kakao.KakaoProperties;
 import com.eodigakka.global.error.BusinessException;
 import com.eodigakka.global.error.ErrorCode;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /** RestClient-backed adapter for Kakao Local keyword place search. */
 @Component
 public class RestKakaoLocalClient implements KakaoLocalClient {
+
+  private static final Logger log = LoggerFactory.getLogger(RestKakaoLocalClient.class);
 
   private final KakaoProperties kakaoProperties;
   private final RestClient restClient;
@@ -36,12 +42,21 @@ public class RestKakaoLocalClient implements KakaoLocalClient {
               .retrieve()
               .body(KakaoLocalKeywordSearchResponse.class);
       if (response == null || response.meta() == null || response.documents() == null) {
+        log.debug("Kakao Local search returned an empty or invalid response body.");
         throw new BusinessException(ErrorCode.KAKAO_LOCAL_SEARCH_FAILED);
       }
       return toResponse(request, response);
     } catch (BusinessException exception) {
       throw exception;
+    } catch (RestClientResponseException exception) {
+      log.debug(
+          "Kakao Local search failed. status={}, responseBody={}",
+          exception.getStatusCode(),
+          exception.getResponseBodyAsString(StandardCharsets.UTF_8),
+          exception);
+      throw new BusinessException(ErrorCode.KAKAO_LOCAL_SEARCH_FAILED);
     } catch (RestClientException | IllegalArgumentException exception) {
+      log.debug("Kakao Local search failed before a valid response was mapped.", exception);
       throw new BusinessException(ErrorCode.KAKAO_LOCAL_SEARCH_FAILED);
     }
   }
