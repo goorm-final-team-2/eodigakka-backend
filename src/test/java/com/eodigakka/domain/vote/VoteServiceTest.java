@@ -39,6 +39,8 @@ class VoteServiceTest {
   private static final Long MEMBER_ID = 100L;
   private static final Long PLACE_CANDIDATE_ID = 1000L;
   private static final Long OTHER_PLACE_CANDIDATE_ID = 1001L;
+  private static final Long THIRD_PLACE_CANDIDATE_ID = 1002L;
+  private static final Long FOURTH_PLACE_CANDIDATE_ID = 1003L;
   private static final String GUEST_TOKEN = "guest-token";
   private static final Instant NOW = Instant.parse("2026-06-21T00:00:00Z");
 
@@ -178,6 +180,22 @@ class VoteServiceTest {
   }
 
   @Test
+  void voteDoesNotLookupOrChangeExistingVoteWhenAppointmentIsConfirmed() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    VoteRequest request = new VoteRequest(OTHER_PLACE_CANDIDATE_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID))
+        .willReturn(Optional.of(appointment(AppointmentStatus.CONFIRMED)));
+
+    assertThatThrownBy(() -> voteService.vote(APPOINTMENT_ID, authUser, null, request))
+        .isInstanceOf(BusinessException.class);
+
+    verify(voteRepository, never()).findByAppointmentIdAndMemberId(APPOINTMENT_ID, MEMBER_ID);
+    verify(voteRepository, never()).save(any());
+  }
+
+  @Test
   void voteThrowsBusinessExceptionWhenPlaceCandidateDoesNotExistInAppointment() {
     AuthUser authUser = new AuthUser(USER_ID);
     VoteRequest request = new VoteRequest(PLACE_CANDIDATE_ID);
@@ -223,6 +241,42 @@ class VoteServiceTest {
   }
 
   @Test
+  void findResultsSortsByVoteCountDescThenCreatedAtAscThenIdAsc() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    PlaceCandidate firstCandidate = placeCandidate(PLACE_CANDIDATE_ID, NOW.plusSeconds(3));
+    PlaceCandidate secondCandidate = placeCandidate(OTHER_PLACE_CANDIDATE_ID, NOW.plusSeconds(1));
+    PlaceCandidate thirdCandidate = placeCandidate(THIRD_PLACE_CANDIDATE_ID, NOW.plusSeconds(2));
+    PlaceCandidate fourthCandidate = placeCandidate(FOURTH_PLACE_CANDIDATE_ID, NOW.plusSeconds(4));
+    Vote myVote = vote(PLACE_CANDIDATE_ID, MEMBER_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID))
+        .willReturn(Optional.of(appointment(AppointmentStatus.CONFIRMED)));
+    given(placeCandidateRepository.findByAppointmentIdOrderByCreatedAtAscIdAsc(APPOINTMENT_ID))
+        .willReturn(List.of(firstCandidate, secondCandidate, thirdCandidate, fourthCandidate));
+    given(voteRepository.findByAppointmentId(APPOINTMENT_ID))
+        .willReturn(
+            List.of(
+                myVote,
+                vote(OTHER_PLACE_CANDIDATE_ID, 200L),
+                vote(OTHER_PLACE_CANDIDATE_ID, 201L),
+                vote(THIRD_PLACE_CANDIDATE_ID, 202L)));
+    given(voteRepository.findByAppointmentIdAndMemberId(APPOINTMENT_ID, MEMBER_ID))
+        .willReturn(Optional.of(myVote));
+
+    List<VoteResultResponse> responses = voteService.findResults(APPOINTMENT_ID, authUser, null);
+
+    assertThat(responses)
+        .extracting(VoteResultResponse::placeCandidateId)
+        .containsExactly(
+            OTHER_PLACE_CANDIDATE_ID,
+            THIRD_PLACE_CANDIDATE_ID,
+            PLACE_CANDIDATE_ID,
+            FOURTH_PLACE_CANDIDATE_ID);
+    assertThat(responses).extracting(VoteResultResponse::voteCount).containsExactly(2L, 1L, 1L, 0L);
+  }
+
+  @Test
   void findResultsReturnsVoteResultsWhenGuestIsAppointmentMember() {
     PlaceCandidate placeCandidate = placeCandidate(PLACE_CANDIDATE_ID);
     given(appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_TOKEN))
@@ -263,6 +317,61 @@ class VoteServiceTest {
         .isInstanceOf(BusinessException.class);
   }
 
+  @Test
+  void cancelDeletesExistingVoteWhenAppointmentIsPlanning() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    Vote existingVote = vote(PLACE_CANDIDATE_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID))
+        .willReturn(Optional.of(appointment(AppointmentStatus.PLANNING)));
+    given(voteRepository.findByAppointmentIdAndMemberId(APPOINTMENT_ID, MEMBER_ID))
+        .willReturn(Optional.of(existingVote));
+
+    voteService.cancel(APPOINTMENT_ID, authUser, null);
+
+    verify(voteRepository).delete(existingVote);
+  }
+
+  @Test
+  void cancelSucceedsWhenUserHasNotVoted() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID))
+        .willReturn(Optional.of(appointment(AppointmentStatus.PLANNING)));
+    given(voteRepository.findByAppointmentIdAndMemberId(APPOINTMENT_ID, MEMBER_ID))
+        .willReturn(Optional.empty());
+
+    voteService.cancel(APPOINTMENT_ID, authUser, null);
+
+    verify(voteRepository, never()).delete(any());
+  }
+
+  @Test
+  void cancelThrowsBusinessExceptionWhenRequesterIsNotAppointmentMember() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willThrow(new BusinessException(ErrorCode.APPOINTMENT_MEMBER_NOT_FOUND));
+
+    assertThatThrownBy(() -> voteService.cancel(APPOINTMENT_ID, authUser, null))
+        .isInstanceOf(BusinessException.class);
+    verify(voteRepository, never()).delete(any());
+  }
+
+  @Test
+  void cancelThrowsBusinessExceptionWhenAppointmentIsNotPlanning() {
+    AuthUser authUser = new AuthUser(USER_ID);
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
+        .willReturn(userMember());
+    given(appointmentRepository.findById(APPOINTMENT_ID))
+        .willReturn(Optional.of(appointment(AppointmentStatus.CONFIRMED)));
+
+    assertThatThrownBy(() -> voteService.cancel(APPOINTMENT_ID, authUser, null))
+        .isInstanceOf(BusinessException.class);
+    verify(voteRepository, never()).delete(any());
+  }
+
   private Appointment appointment(AppointmentStatus status) {
     Appointment appointment =
         Appointment.create(
@@ -295,6 +404,10 @@ class VoteServiceTest {
   }
 
   private PlaceCandidate placeCandidate(Long placeCandidateId) {
+    return placeCandidate(placeCandidateId, NOW);
+  }
+
+  private PlaceCandidate placeCandidate(Long placeCandidateId, Instant createdAt) {
     PlaceCandidate placeCandidate =
         PlaceCandidate.create(
             APPOINTMENT_ID,
@@ -308,13 +421,17 @@ class VoteServiceTest {
             37.4979,
             127.0276,
             MEMBER_ID,
-            NOW);
+            createdAt);
     ReflectionTestUtils.setField(placeCandidate, "id", placeCandidateId);
     return placeCandidate;
   }
 
   private Vote vote(Long placeCandidateId) {
-    Vote vote = Vote.create(APPOINTMENT_ID, placeCandidateId, MEMBER_ID, NOW);
+    return vote(placeCandidateId, MEMBER_ID);
+  }
+
+  private Vote vote(Long placeCandidateId, Long memberId) {
+    Vote vote = Vote.create(APPOINTMENT_ID, placeCandidateId, memberId, NOW);
     ReflectionTestUtils.setField(vote, "id", 1L);
     return vote;
   }

@@ -75,18 +75,19 @@ public class PlaceCandidateService {
                 request.longitude(),
                 appointmentMember.getId(),
                 Instant.now(clock)));
-    return PlaceCandidateResponse.from(placeCandidate);
+    return PlaceCandidateResponse.from(placeCandidate, appointmentMember);
   }
 
   @Transactional(readOnly = true)
   public List<PlaceCandidateResponse> findAll(
       Long appointmentId, AuthUser authUser, String guestSessionToken) {
-    appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
+    AppointmentMember appointmentMember =
+        appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
     getAppointment(appointmentId);
     return placeCandidateRepository
         .findByAppointmentIdOrderByCreatedAtAscIdAsc(appointmentId)
         .stream()
-        .map(PlaceCandidateResponse::from)
+        .map(placeCandidate -> PlaceCandidateResponse.from(placeCandidate, appointmentMember))
         .toList();
   }
 
