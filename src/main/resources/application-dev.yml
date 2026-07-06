@@ -11,3 +11,4 @@ spring:
 logging:
   level:
     com.eodigakka: debug
+    com.eodigakka.domain.place.RestKakaoLocalClient: debug
