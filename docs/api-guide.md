@@ -435,6 +435,31 @@ Authorization: Bearer {accessToken}
 
 방장만 가능하며 `PLANNING` 상태에서만 가능합니다.
 성공 시 약속방 상태가 `CONFIRMED`로 변경됩니다.
+확정 이후 장소 후보 등록/삭제와 투표 생성/변경/취소는 불가능합니다.
+
+응답:
+
+```json
+{
+  "data": {
+    "id": 1,
+    "appointmentId": 10,
+    "placeCandidateId": 1000,
+    "confirmedByUserId": 1,
+    "confirmedAt": "2026-06-21T00:00:00Z",
+    "kakaoPlaceId": "26338954",
+    "name": "강남역",
+    "address": "서울 강남구 역삼동 858",
+    "roadAddress": "서울 강남구 강남대로 396",
+    "category": "교통,수송 > 지하철,전철 > 수도권2호선",
+    "placeUrl": "https://place.map.kakao.com/26338954",
+    "phone": "02-6110-2221",
+    "latitude": 37.4979,
+    "longitude": 127.0276
+  },
+  "message": "success"
+}
+```
 
 ### 확정 장소 조회
 
@@ -448,6 +473,9 @@ Authorization: Bearer {accessToken}
 ```http
 Cookie: guestSession={guestSession}
 ```
+
+응답은 확정 장소 선택 API와 동일하며, 확정 메타데이터와 선택된 장소 후보 상세를 함께 반환합니다.
+확정 장소가 없으면 `CONFIRMED_PLACE_NOT_FOUND`로 실패합니다.
 
 ## Location API
 

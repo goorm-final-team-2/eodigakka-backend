@@ -86,6 +86,7 @@ class ConfirmedPlaceServiceTest {
     assertThat(response.placeCandidateId()).isEqualTo(PLACE_CANDIDATE_ID);
     assertThat(response.confirmedByUserId()).isEqualTo(USER_ID);
     assertThat(response.confirmedAt()).isEqualTo(NOW);
+    assertPlaceCandidateDetails(response);
     assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CONFIRMED);
   }
 
@@ -137,11 +138,14 @@ class ConfirmedPlaceServiceTest {
         .willReturn(Optional.of(appointment(AppointmentStatus.CONFIRMED)));
     given(confirmedPlaceRepository.findByAppointmentId(APPOINTMENT_ID))
         .willReturn(Optional.of(confirmedPlace));
+    given(placeCandidateRepository.findByIdAndAppointmentId(PLACE_CANDIDATE_ID, APPOINTMENT_ID))
+        .willReturn(Optional.of(placeCandidate()));
 
     ConfirmedPlaceResponse response = confirmedPlaceService.find(APPOINTMENT_ID, authUser, null);
 
     assertThat(response.appointmentId()).isEqualTo(APPOINTMENT_ID);
     assertThat(response.placeCandidateId()).isEqualTo(PLACE_CANDIDATE_ID);
+    assertPlaceCandidateDetails(response);
   }
 
   @Test
@@ -153,11 +157,14 @@ class ConfirmedPlaceServiceTest {
         .willReturn(Optional.of(appointment(AppointmentStatus.CONFIRMED)));
     given(confirmedPlaceRepository.findByAppointmentId(APPOINTMENT_ID))
         .willReturn(Optional.of(confirmedPlace));
+    given(placeCandidateRepository.findByIdAndAppointmentId(PLACE_CANDIDATE_ID, APPOINTMENT_ID))
+        .willReturn(Optional.of(placeCandidate()));
 
     ConfirmedPlaceResponse response = confirmedPlaceService.find(APPOINTMENT_ID, null, GUEST_TOKEN);
 
     assertThat(response.appointmentId()).isEqualTo(APPOINTMENT_ID);
     assertThat(response.placeCandidateId()).isEqualTo(PLACE_CANDIDATE_ID);
+    assertPlaceCandidateDetails(response);
   }
 
   @Test
@@ -245,5 +252,17 @@ class ConfirmedPlaceServiceTest {
         ConfirmedPlace.create(APPOINTMENT_ID, PLACE_CANDIDATE_ID, USER_ID, NOW);
     ReflectionTestUtils.setField(confirmedPlace, "id", 1L);
     return confirmedPlace;
+  }
+
+  private void assertPlaceCandidateDetails(ConfirmedPlaceResponse response) {
+    assertThat(response.kakaoPlaceId()).isEqualTo(PLACE_CANDIDATE_ID.toString());
+    assertThat(response.name()).isEqualTo("강남역");
+    assertThat(response.address()).isEqualTo("서울 강남구 강남대로 396");
+    assertThat(response.roadAddress()).isEqualTo("서울 강남구 강남대로 396");
+    assertThat(response.category()).isEqualTo("지하철역");
+    assertThat(response.placeUrl()).isEqualTo("https://place.map.kakao.com/" + PLACE_CANDIDATE_ID);
+    assertThat(response.phone()).isEqualTo("02-123-4567");
+    assertThat(response.latitude()).isEqualTo(37.4979);
+    assertThat(response.longitude()).isEqualTo(127.0276);
   }
 }
