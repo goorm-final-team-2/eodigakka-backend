@@ -10,6 +10,7 @@ public record KakaoProperties(
     String clientSecret,
     URI tokenUri,
     URI userInfoUri,
+    URI localKeywordSearchUri,
     List<String> allowedRedirectUris) {
 
   public boolean isAllowedRedirectUri(String redirectUri) {

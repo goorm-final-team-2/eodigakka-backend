@@ -3,6 +3,8 @@ package com.eodigakka.domain.place;
 import com.eodigakka.global.response.ApiResponse;
 import com.eodigakka.global.security.AuthUser;
 import com.eodigakka.global.security.GuestUser;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -27,6 +29,30 @@ public class PlaceCandidateController {
   }
 
   @PostMapping
+  @Operation(
+      summary = "장소 후보 등록",
+      description =
+          """
+          카카오 장소 검색 결과 item에서 `distance`를 제외한 필드를 전달해 약속 장소 후보로 등록합니다.
+          응답의 `addedByMe`와 `deletable`은 현재 요청자 기준 상태입니다.
+          """,
+      responses = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "201",
+            description = "장소 후보 등록 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "400",
+            description = "등록 요청이 올바르지 않거나 이미 등록된 장소 후보",
+            content = @Content),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "403",
+            description = "약속방 참여자가 아님",
+            content = @Content),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "404",
+            description = "약속방을 찾을 수 없음",
+            content = @Content)
+      })
   public ResponseEntity<ApiResponse<PlaceCandidateResponse>> create(
       @PathVariable Long appointmentId,
       @AuthenticationPrincipal AuthUser authUser,
@@ -41,6 +67,13 @@ public class PlaceCandidateController {
   }
 
   @GetMapping
+  @Operation(
+      summary = "장소 후보 목록 조회",
+      description =
+          """
+          약속 장소 후보 목록을 조회합니다.
+          각 후보의 `addedByMe`와 `deletable`은 현재 요청자 기준 상태입니다.
+          """)
   public ApiResponse<List<PlaceCandidateResponse>> findAll(
       @PathVariable Long appointmentId,
       @AuthenticationPrincipal AuthUser authUser,
@@ -50,6 +83,7 @@ public class PlaceCandidateController {
   }
 
   @DeleteMapping("/{placeCandidateId}")
+  @Operation(summary = "장소 후보 삭제", description = "후보 등록자 또는 약속 호스트가 장소 후보를 삭제합니다.")
   public ApiResponse<Void> delete(
       @PathVariable Long appointmentId,
       @PathVariable Long placeCandidateId,

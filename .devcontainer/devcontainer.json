@@ -1,0 +1,19 @@
+{
+  "name": "eodigakka-backend-dev",
+  "dockerComposeFile": [
+    "../docker-compose.dev.yml"
+  ],
+  "service": "backend",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "remoteUser": "vscode",
+  "forwardPorts": [
+    8080
+  ],
+  "customizations": {
+    "jetbrains": {
+      "backend": "IntelliJ IDEA"
+    }
+  },
+  "postCreateCommand": " sudo chown -R vscode:vscode /home/vscode/.gradle && ./gradlew --version",
+}

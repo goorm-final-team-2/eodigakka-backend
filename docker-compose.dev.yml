@@ -1,0 +1,101 @@
+services:
+  # =========================
+  # ===== Dev container =====
+  # =========================
+  backend:
+    image: mcr.microsoft.com/devcontainers/java:1-21-bookworm
+    container_name: eodigakka-backend
+
+    working_dir: /workspace
+    volumes:
+      - .:/workspace:cached
+      - gradle-cache:/home/vscode/.gradle
+
+
+    command: sleep infinity
+
+    environment:
+
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      KAKAO_ALLOWED_REDIRECT_URIS: ${KAKAO_ALLOWED_REDIRECT_URIS}
+
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-eodigakka}
+      DB_USERNAME: ${POSTGRES_USER:-eodigakka}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-eodigakka}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173}
+
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    networks:
+      - eodigakka-dev
+
+  # =========================
+  # ===== PostgreSQL DB =====
+  # =========================
+  postgres:
+    image: postgres:17-alpine
+    container_name: eodigakka-postgres
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eodigakka}
+      POSTGRES_USER: ${POSTGRES_USER:-eodigakka}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eodigakka}
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eodigakka} -d ${POSTGRES_DB:-eodigakka}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    restart: unless-stopped
+
+    networks:
+      - eodigakka-dev
+
+  # ========================
+  # ===== Redis Cache  =====
+  # ========================
+  redis:
+    image: redis:7.4-alpine
+    container_name: eodigakka-redis
+
+    command: redis-server --appendonly yes
+
+    volumes:
+      - redis-data:/data
+
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+    restart: unless-stopped
+
+    networks:
+      - eodigakka-dev
+
+volumes:
+  postgres-data:
+  redis-data:
+  gradle-cache:
+
+networks:
+  eodigakka-dev:
+    driver: bridge
