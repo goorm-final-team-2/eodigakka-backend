@@ -7,6 +7,7 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import java.util.List;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -42,7 +43,6 @@ public class OpenApiConfig {
                     + "X-Guest-Token 또는 X-Guest-Session 헤더는 사용하지 않습니다.");
 
     return new OpenAPI()
-        .servers(List.of(new Server().url(serverUrl)))
         .info(
             new Info()
                 .title("어디가까 API")
@@ -61,5 +61,10 @@ public class OpenApiConfig {
                 .addSecuritySchemes(GUEST_SESSION_COOKIE, guestSessionCookieScheme))
         .addSecurityItem(new SecurityRequirement().addList(BEARER_AUTH))
         .addSecurityItem(new SecurityRequirement().addList(GUEST_SESSION_COOKIE));
+  }
+
+  @Bean
+  public OpenApiCustomizer serverUrlOpenApiCustomizer() {
+    return openApi -> openApi.setServers(List.of(new Server().url(serverUrl)));
   }
 }
