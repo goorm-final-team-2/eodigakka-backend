@@ -29,13 +29,12 @@ class OpenApiConfigTest {
   }
 
   @Test
-  void openApiCustomizerOverridesGeneratedServerUrl() {
+  void serverBaseUrlCustomizerOverridesGeneratedServerBaseUrl() {
     OpenApiConfig openApiConfig = new OpenApiConfig("https://api.eodigakka.xyz");
-    OpenAPI openAPI = new OpenAPI();
 
-    openApiConfig.serverUrlOpenApiCustomizer().customise(openAPI);
+    String serverBaseUrl =
+        openApiConfig.serverBaseUrlCustomizer().customize("http://localhost:8080", null);
 
-    assertThat(openAPI.getServers()).hasSize(1);
-    assertThat(openAPI.getServers().getFirst().getUrl()).isEqualTo("https://api.eodigakka.xyz");
+    assertThat(serverBaseUrl).isEqualTo("https://api.eodigakka.xyz");
   }
 }
