@@ -10,8 +10,10 @@ class OpenApiConfigTest {
 
   @Test
   void openApiDefinesBearerAndGuestSessionCookieSecuritySchemes() {
-    OpenAPI openAPI = new OpenApiConfig().eodigakkaOpenApi();
+    OpenAPI openAPI = new OpenApiConfig("https://api.eodigakka.xyz").eodigakkaOpenApi();
 
+    assertThat(openAPI.getServers()).hasSize(1);
+    assertThat(openAPI.getServers().getFirst().getUrl()).isEqualTo("https://api.eodigakka.xyz");
     assertThat(openAPI.getComponents().getSecuritySchemes())
         .containsKeys("bearerAuth", "guestSessionCookie");
     assertThat(openAPI.getComponents().getSecuritySchemes().get("bearerAuth").getType())

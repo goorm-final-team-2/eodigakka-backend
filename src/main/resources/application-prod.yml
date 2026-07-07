@@ -14,6 +14,8 @@ logging:
     com.eodigakka: info
 
 app:
+  openapi:
+    server-url: ${OPENAPI_SERVER_URL:https://api.eodigakka.xyz}
   auth:
     jwt:
       secret: ${JWT_SECRET}
