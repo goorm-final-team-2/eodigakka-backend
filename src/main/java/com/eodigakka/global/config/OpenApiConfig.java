@@ -5,6 +5,9 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,6 +16,12 @@ public class OpenApiConfig {
 
   private static final String BEARER_AUTH = "bearerAuth";
   private static final String GUEST_SESSION_COOKIE = "guestSessionCookie";
+
+  private final String serverUrl;
+
+  public OpenApiConfig(@Value("${app.openapi.server-url}") String serverUrl) {
+    this.serverUrl = serverUrl;
+  }
 
   @Bean
   public OpenAPI eodigakkaOpenApi() {
@@ -33,6 +42,7 @@ public class OpenApiConfig {
                     + "X-Guest-Token 또는 X-Guest-Session 헤더는 사용하지 않습니다.");
 
     return new OpenAPI()
+        .servers(List.of(new Server().url(serverUrl)))
         .info(
             new Info()
                 .title("어디가까 API")

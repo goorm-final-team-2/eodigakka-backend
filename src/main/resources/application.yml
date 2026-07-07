@@ -29,6 +29,8 @@ springdoc:
     path: /v3/api-docs
 
 app:
+  openapi:
+    server-url: ${OPENAPI_SERVER_URL:http://localhost:8080}
   cors:
     allowed-origins: ${FRONTEND_ORIGINS:http://localhost:5173}
   auth:
