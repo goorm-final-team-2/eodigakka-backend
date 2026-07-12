@@ -2,6 +2,7 @@ package com.eodigakka.domain.appointment;
 
 import com.eodigakka.global.response.ApiResponse;
 import com.eodigakka.global.security.AuthUser;
+import com.eodigakka.global.security.GuestUser;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -23,11 +24,15 @@ public class AppointmentController {
 
   private final AppointmentService appointmentService;
   private final GuestCookieService guestCookieService;
+  private final AppointmentMemberResolver appointmentMemberResolver;
 
   public AppointmentController(
-      AppointmentService appointmentService, GuestCookieService guestCookieService) {
+      AppointmentService appointmentService,
+      GuestCookieService guestCookieService,
+      AppointmentMemberResolver appointmentMemberResolver) {
     this.appointmentService = appointmentService;
     this.guestCookieService = guestCookieService;
+    this.appointmentMemberResolver = appointmentMemberResolver;
   }
 
   @PostMapping
@@ -64,8 +69,12 @@ public class AppointmentController {
 
   @GetMapping("/{appointmentId}")
   public ApiResponse<AppointmentResponse> findById(
-      @AuthenticationPrincipal AuthUser authUser, @PathVariable Long appointmentId) {
-    return ApiResponse.success(appointmentService.findById(appointmentId, authUser.userId()));
+      @AuthenticationPrincipal AuthUser authUser,
+      @AuthenticationPrincipal GuestUser guestUser,
+      @PathVariable Long appointmentId) {
+    AppointmentMember appointmentMember =
+        appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken(guestUser));
+    return ApiResponse.success(appointmentService.findByMember(appointmentId, appointmentMember));
   }
 
   @PostMapping("/join")
@@ -95,5 +104,9 @@ public class AppointmentController {
   public ApiResponse<AppointmentResponse> close(
       @AuthenticationPrincipal AuthUser authUser, @PathVariable Long appointmentId) {
     return ApiResponse.success(appointmentService.close(appointmentId, authUser.userId()));
+  }
+
+  private String guestSessionToken(GuestUser guestUser) {
+    return guestUser == null ? null : guestUser.sessionToken();
   }
 }
