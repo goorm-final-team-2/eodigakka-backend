@@ -5,10 +5,13 @@ import com.eodigakka.domain.user.UserRepository;
 import com.eodigakka.global.error.BusinessException;
 import com.eodigakka.global.error.ErrorCode;
 import com.eodigakka.global.security.AuthUser;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,15 +20,35 @@ public class AppointmentMemberService {
 
   private final AppointmentMemberRepository appointmentMemberRepository;
   private final AppointmentMemberResolver appointmentMemberResolver;
+  private final GuestSessionService guestSessionService;
   private final UserRepository userRepository;
+  private final Clock clock;
 
+  @Autowired
   public AppointmentMemberService(
       AppointmentMemberRepository appointmentMemberRepository,
       AppointmentMemberResolver appointmentMemberResolver,
+      GuestSessionService guestSessionService,
       UserRepository userRepository) {
+    this(
+        appointmentMemberRepository,
+        appointmentMemberResolver,
+        guestSessionService,
+        userRepository,
+        Clock.systemUTC());
+  }
+
+  AppointmentMemberService(
+      AppointmentMemberRepository appointmentMemberRepository,
+      AppointmentMemberResolver appointmentMemberResolver,
+      GuestSessionService guestSessionService,
+      UserRepository userRepository,
+      Clock clock) {
     this.appointmentMemberRepository = appointmentMemberRepository;
     this.appointmentMemberResolver = appointmentMemberResolver;
+    this.guestSessionService = guestSessionService;
     this.userRepository = userRepository;
+    this.clock = clock;
   }
 
   @Transactional(readOnly = true)
@@ -34,12 +57,33 @@ public class AppointmentMemberService {
     appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
 
     List<AppointmentMember> appointmentMembers =
-        appointmentMemberRepository.findByAppointmentIdOrderByJoinedAtAscIdAsc(appointmentId);
+        appointmentMemberRepository.findByAppointmentIdAndLeftAtIsNullOrderByJoinedAtAscIdAsc(
+            appointmentId);
     Map<Long, User> usersById = findUsersById(appointmentMembers);
 
     return appointmentMembers.stream()
         .map(appointmentMember -> toResponse(appointmentMember, usersById))
         .toList();
+  }
+
+  @Transactional
+  public boolean leave(Long appointmentId, AuthUser authUser, String guestSessionToken) {
+    AppointmentMember appointmentMember =
+        appointmentMemberResolver.resolve(appointmentId, authUser, guestSessionToken);
+    if (appointmentMember.isHost()) {
+      throw new BusinessException(ErrorCode.APPOINTMENT_HOST_CANNOT_LEAVE);
+    }
+
+    appointmentMember.leave(Instant.now(clock));
+    if (hasText(guestSessionToken)) {
+      guestSessionService.revoke(guestSessionToken);
+      return true;
+    }
+    return false;
+  }
+
+  private boolean hasText(String value) {
+    return value != null && !value.isBlank();
   }
 
   private Map<Long, User> findUsersById(List<AppointmentMember> appointmentMembers) {

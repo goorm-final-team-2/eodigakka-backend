@@ -18,6 +18,8 @@ public enum ErrorCode {
       HttpStatus.FORBIDDEN, "APPOINTMENT_MEMBER_NOT_FOUND", "약속방 참여자를 찾을 수 없습니다."),
   APPOINTMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "APPOINTMENT_ACCESS_DENIED", "약속방 접근 권한이 없습니다."),
   APPOINTMENT_HOST_REQUIRED(HttpStatus.FORBIDDEN, "APPOINTMENT_HOST_REQUIRED", "약속방 방장 권한이 필요합니다."),
+  APPOINTMENT_HOST_CANNOT_LEAVE(
+      HttpStatus.BAD_REQUEST, "APPOINTMENT_HOST_CANNOT_LEAVE", "방장은 약속방을 나갈 수 없습니다."),
   APPOINTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "APPOINTMENT_NOT_FOUND", "약속방을 찾을 수 없습니다."),
   APPOINTMENT_STATUS_NOT_EDITABLE(
       HttpStatus.BAD_REQUEST, "APPOINTMENT_STATUS_NOT_EDITABLE", "현재 상태에서는 약속방을 수정하거나 삭제할 수 없습니다."),

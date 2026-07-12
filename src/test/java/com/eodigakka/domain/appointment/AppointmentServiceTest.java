@@ -107,7 +107,8 @@ class AppointmentServiceTest {
     AppointmentMember member =
         AppointmentMember.createUserMember(
             APPOINTMENT_ID, USER_ID, AppointmentMemberRole.MEMBER, NOW);
-    given(appointmentMemberRepository.findByUserId(USER_ID)).willReturn(List.of(member));
+    given(appointmentMemberRepository.findByUserIdAndLeftAtIsNull(USER_ID))
+        .willReturn(List.of(member));
     given(appointmentRepository.findByIdIn(any())).willReturn(List.of(appointment));
 
     List<AppointmentResponse> responses = appointmentService.findMyAppointments(USER_ID);
@@ -193,6 +194,28 @@ class AppointmentServiceTest {
 
     assertThat(response.id()).isEqualTo(APPOINTMENT_ID);
     assertThat(response.role()).isEqualTo(AppointmentMemberRole.MEMBER);
+    assertThat(member.getJoinedAt()).isEqualTo(NOW);
+    verify(appointmentMemberRepository, never()).save(any(AppointmentMember.class));
+  }
+
+  @Test
+  void joinRejoinsWhenUserHadLeftAppointment() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    AppointmentMember member =
+        AppointmentMember.createUserMember(
+            APPOINTMENT_ID, USER_ID, AppointmentMemberRole.MEMBER, NOW.minusSeconds(60));
+    member.leave(NOW.minusSeconds(30));
+    given(appointmentRepository.findByInviteCode("A7K2P9QX")).willReturn(Optional.of(appointment));
+    given(appointmentMemberRepository.findByAppointmentIdAndUserId(APPOINTMENT_ID, USER_ID))
+        .willReturn(Optional.of(member));
+
+    AppointmentResponse response =
+        appointmentService.join(USER_ID, new AppointmentJoinRequest("A7K2P9QX"));
+
+    assertThat(response.id()).isEqualTo(APPOINTMENT_ID);
+    assertThat(response.role()).isEqualTo(AppointmentMemberRole.MEMBER);
+    assertThat(member.isLeft()).isFalse();
+    assertThat(member.getJoinedAt()).isEqualTo(NOW);
     verify(appointmentMemberRepository, never()).save(any(AppointmentMember.class));
   }
 
@@ -242,8 +265,12 @@ class AppointmentServiceTest {
   void joinAsGuestCreatesGuestMemberAndIssuesGuestSession() {
     Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
     given(appointmentRepository.findByInviteCode("A7K2P9QX")).willReturn(Optional.of(appointment));
-    given(appointmentMemberRepository.existsByAppointmentIdAndGuestName(APPOINTMENT_ID, "철수"))
+    given(
+            appointmentMemberRepository.existsByAppointmentIdAndGuestNameAndLeftAtIsNull(
+                APPOINTMENT_ID, "철수"))
         .willReturn(false);
+    given(appointmentMemberRepository.findByAppointmentIdAndGuestName(APPOINTMENT_ID, "철수"))
+        .willReturn(Optional.empty());
     given(guestTokenGenerator.generate()).willReturn("legacy-guest-token");
     given(appointmentMemberRepository.save(any(AppointmentMember.class)))
         .willAnswer(
@@ -281,11 +308,40 @@ class AppointmentServiceTest {
   void joinAsGuestThrowsBusinessExceptionWhenGuestNameAlreadyExists() {
     Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
     given(appointmentRepository.findByInviteCode("A7K2P9QX")).willReturn(Optional.of(appointment));
-    given(appointmentMemberRepository.existsByAppointmentIdAndGuestName(APPOINTMENT_ID, "철수"))
+    given(
+            appointmentMemberRepository.existsByAppointmentIdAndGuestNameAndLeftAtIsNull(
+                APPOINTMENT_ID, "철수"))
         .willReturn(true);
 
     assertThatThrownBy(() -> appointmentService.joinAsGuest(new GuestJoinRequest("A7K2P9QX", "철수")))
         .isInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  void joinAsGuestRejoinsWhenGuestHadLeftAppointment() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    AppointmentMember guestMember =
+        AppointmentMember.createGuest(
+            APPOINTMENT_ID, "철수", MessageDigestSupport.sha256Hex("legacy-guest-token"), NOW);
+    ReflectionTestUtils.setField(guestMember, "id", 100L);
+    guestMember.leave(NOW.minusSeconds(30));
+    given(appointmentRepository.findByInviteCode("A7K2P9QX")).willReturn(Optional.of(appointment));
+    given(
+            appointmentMemberRepository.existsByAppointmentIdAndGuestNameAndLeftAtIsNull(
+                APPOINTMENT_ID, "철수"))
+        .willReturn(false);
+    given(appointmentMemberRepository.findByAppointmentIdAndGuestName(APPOINTMENT_ID, "철수"))
+        .willReturn(Optional.of(guestMember));
+    given(guestSessionService.issue(guestMember))
+        .willReturn(new GuestSessionIssue("guest-session-token", NOW.plusSeconds(3600)));
+
+    GuestJoinResult result = appointmentService.joinAsGuest(new GuestJoinRequest("A7K2P9QX", "철수"));
+
+    assertThat(result.response().guest().memberId()).isEqualTo(100L);
+    assertThat(guestMember.isLeft()).isFalse();
+    assertThat(guestMember.getJoinedAt()).isEqualTo(NOW);
+    assertThat(result.guestSessionIssue().token()).isEqualTo("guest-session-token");
+    verify(appointmentMemberRepository, never()).save(any(AppointmentMember.class));
   }
 
   @Test

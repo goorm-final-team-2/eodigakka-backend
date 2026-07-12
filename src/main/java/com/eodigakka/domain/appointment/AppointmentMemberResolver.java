@@ -24,12 +24,17 @@ public class AppointmentMemberResolver {
       Long appointmentId, AuthUser authUser, String guestSessionToken) {
     if (authUser != null) {
       return appointmentMemberRepository
-          .findByAppointmentIdAndUserId(appointmentId, authUser.userId())
+          .findByAppointmentIdAndUserIdAndLeftAtIsNull(appointmentId, authUser.userId())
           .orElseThrow(() -> new BusinessException(ErrorCode.APPOINTMENT_MEMBER_NOT_FOUND));
     }
 
     if (hasText(guestSessionToken)) {
-      return guestSessionService.resolve(appointmentId, guestSessionToken);
+      AppointmentMember appointmentMember =
+          guestSessionService.resolve(appointmentId, guestSessionToken);
+      if (appointmentMember.isLeft()) {
+        throw new BusinessException(ErrorCode.APPOINTMENT_MEMBER_NOT_FOUND);
+      }
+      return appointmentMember;
     }
 
     throw new BusinessException(ErrorCode.APPOINTMENT_MEMBER_NOT_FOUND);
