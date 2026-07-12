@@ -133,6 +133,21 @@ class AppointmentServiceTest {
   }
 
   @Test
+  void findByMemberReturnsAppointmentForResolvedGuestMember() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    AppointmentMember guestMember =
+        AppointmentMember.createGuest(
+            APPOINTMENT_ID, "철수", MessageDigestSupport.sha256Hex("legacy-guest-token"), NOW);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+
+    AppointmentResponse response = appointmentService.findByMember(APPOINTMENT_ID, guestMember);
+
+    assertThat(response.id()).isEqualTo(APPOINTMENT_ID);
+    assertThat(response.role()).isEqualTo(AppointmentMemberRole.MEMBER);
+    verify(appointmentAccessValidator, never()).validateMember(any(), any());
+  }
+
+  @Test
   void findByIdThrowsBusinessExceptionWhenUserIsNotMember() {
     given(appointmentAccessValidator.validateMember(APPOINTMENT_ID, USER_ID))
         .willThrow(new BusinessException(ErrorCode.APPOINTMENT_MEMBER_NOT_FOUND));

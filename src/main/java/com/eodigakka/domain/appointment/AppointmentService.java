@@ -113,6 +113,11 @@ public class AppointmentService {
   public AppointmentResponse findById(Long appointmentId, Long userId) {
     AppointmentMember appointmentMember =
         appointmentAccessValidator.validateMember(appointmentId, userId);
+    return findByMember(appointmentId, appointmentMember);
+  }
+
+  @Transactional(readOnly = true)
+  public AppointmentResponse findByMember(Long appointmentId, AppointmentMember appointmentMember) {
     Appointment appointment =
         appointmentRepository
             .findById(appointmentId)
