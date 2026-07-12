@@ -139,6 +139,12 @@ public class Appointment {
     }
   }
 
+  public void validateDeletable() {
+    if (status != AppointmentStatus.PLANNING && status != AppointmentStatus.CLOSED) {
+      throw new BusinessException(ErrorCode.APPOINTMENT_STATUS_NOT_EDITABLE);
+    }
+  }
+
   public void validateJoinable() {
     if (status == AppointmentStatus.CLOSED) {
       throw new BusinessException(ErrorCode.APPOINTMENT_NOT_JOINABLE);

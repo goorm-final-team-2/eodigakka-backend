@@ -363,6 +363,21 @@ class AppointmentServiceTest {
   }
 
   @Test
+  void deleteRemovesAppointmentWhenUserIsHostAndAppointmentIsClosed() {
+    Appointment appointment = appointment(APPOINTMENT_ID, "강남 저녁 약속");
+    ReflectionTestUtils.setField(appointment, "status", AppointmentStatus.CLOSED);
+    AppointmentMember hostMember =
+        AppointmentMember.createUserMember(
+            APPOINTMENT_ID, USER_ID, AppointmentMemberRole.HOST, NOW);
+    given(appointmentAccessValidator.validateHost(APPOINTMENT_ID, USER_ID)).willReturn(hostMember);
+    given(appointmentRepository.findById(APPOINTMENT_ID)).willReturn(Optional.of(appointment));
+
+    appointmentService.delete(APPOINTMENT_ID, USER_ID);
+
+    verify(appointmentRepository).delete(appointment);
+  }
+
+  @Test
   void deleteThrowsBusinessExceptionWhenUserIsNotHost() {
     given(appointmentAccessValidator.validateHost(APPOINTMENT_ID, USER_ID))
         .willThrow(new BusinessException(ErrorCode.APPOINTMENT_HOST_REQUIRED));
