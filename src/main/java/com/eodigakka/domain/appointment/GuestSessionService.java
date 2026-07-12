@@ -66,4 +66,13 @@ public class GuestSessionService {
     guestSession.recordUsedAt(now);
     return guestSession.getAppointmentMember();
   }
+
+  @Transactional
+  public void revoke(String sessionToken) {
+    GuestSession guestSession =
+        guestSessionRepository
+            .findByTokenHash(MessageDigestSupport.sha256Hex(sessionToken))
+            .orElseThrow(() -> new BusinessException(ErrorCode.GUEST_SESSION_INVALID));
+    guestSession.revoke(Instant.now(clock));
+  }
 }

@@ -75,6 +75,8 @@ public class SecurityConfig {
                     .hasAnyAuthority(SecurityAuthority.USER, SecurityAuthority.GUEST)
                     .requestMatchers(HttpMethod.GET, "/api/appointments/*/members")
                     .hasAnyAuthority(SecurityAuthority.USER, SecurityAuthority.GUEST)
+                    .requestMatchers(HttpMethod.DELETE, "/api/appointments/*/members/me")
+                    .hasAnyAuthority(SecurityAuthority.USER, SecurityAuthority.GUEST)
                     .requestMatchers("/api/appointments/*/place-candidates/**")
                     .hasAnyAuthority(SecurityAuthority.USER, SecurityAuthority.GUEST)
                     .requestMatchers(HttpMethod.PUT, "/api/appointments/*/votes")

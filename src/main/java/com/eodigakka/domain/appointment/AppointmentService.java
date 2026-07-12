@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,7 +85,8 @@ public class AppointmentService {
 
   @Transactional(readOnly = true)
   public List<AppointmentResponse> findMyAppointments(Long userId) {
-    List<AppointmentMember> appointmentMembers = appointmentMemberRepository.findByUserId(userId);
+    List<AppointmentMember> appointmentMembers =
+        appointmentMemberRepository.findByUserIdAndLeftAtIsNull(userId);
     if (appointmentMembers.isEmpty()) {
       return List.of();
     }
@@ -136,7 +138,12 @@ public class AppointmentService {
     return appointmentMemberRepository
         .findByAppointmentIdAndUserId(appointment.getId(), userId)
         .map(
-            appointmentMember -> AppointmentResponse.from(appointment, appointmentMember.getRole()))
+            appointmentMember -> {
+              if (appointmentMember.isLeft()) {
+                appointmentMember.rejoin(Instant.now(clock));
+              }
+              return AppointmentResponse.from(appointment, appointmentMember.getRole());
+            })
         .orElseGet(() -> joinAsMember(appointment, userId));
   }
 
@@ -151,9 +158,20 @@ public class AppointmentService {
   public GuestJoinResult joinAsGuest(GuestJoinRequest request) {
     Appointment appointment = getAppointmentByInviteCode(request.inviteCode());
     appointment.validateJoinable();
-    if (appointmentMemberRepository.existsByAppointmentIdAndGuestName(
+    if (appointmentMemberRepository.existsByAppointmentIdAndGuestNameAndLeftAtIsNull(
         appointment.getId(), request.guestName())) {
       throw new BusinessException(ErrorCode.GUEST_NAME_ALREADY_EXISTS);
+    }
+
+    Optional<AppointmentMember> leftGuestMember =
+        appointmentMemberRepository.findByAppointmentIdAndGuestName(
+            appointment.getId(), request.guestName());
+    if (leftGuestMember.isPresent()) {
+      AppointmentMember appointmentMember = leftGuestMember.get();
+      appointmentMember.rejoin(Instant.now(clock));
+      GuestSessionIssue guestSessionIssue = guestSessionService.issue(appointmentMember);
+      return new GuestJoinResult(
+          GuestJoinResponse.from(appointment, appointmentMember), guestSessionIssue);
     }
 
     // V2 schema still requires appointment_members.guest_token_hash for guest rows.

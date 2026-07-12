@@ -41,6 +41,9 @@ public class AppointmentMember {
   @Column(name = "joined_at", nullable = false)
   private Instant joinedAt;
 
+  @Column(name = "left_at")
+  private Instant leftAt;
+
   protected AppointmentMember() {}
 
   static AppointmentMember createUserMember(
@@ -106,7 +109,27 @@ public class AppointmentMember {
     return joinedAt;
   }
 
+  public Instant getLeftAt() {
+    return leftAt;
+  }
+
   public boolean isHost() {
     return role == AppointmentMemberRole.HOST;
+  }
+
+  public boolean isLeft() {
+    return leftAt != null;
+  }
+
+  public void leave(Instant now) {
+    if (isHost()) {
+      throw new IllegalStateException("Host cannot leave appointment");
+    }
+    this.leftAt = now;
+  }
+
+  public void rejoin(Instant now) {
+    this.leftAt = null;
+    this.joinedAt = now;
   }
 }

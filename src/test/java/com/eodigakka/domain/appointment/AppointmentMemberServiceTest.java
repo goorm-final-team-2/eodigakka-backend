@@ -3,6 +3,7 @@ package com.eodigakka.domain.appointment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 import com.eodigakka.domain.user.SocialProvider;
 import com.eodigakka.domain.user.User;
@@ -10,7 +11,9 @@ import com.eodigakka.domain.user.UserRepository;
 import com.eodigakka.global.error.BusinessException;
 import com.eodigakka.global.error.ErrorCode;
 import com.eodigakka.global.security.AuthUser;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,7 @@ class AppointmentMemberServiceTest {
 
   @Mock private AppointmentMemberRepository appointmentMemberRepository;
   @Mock private AppointmentMemberResolver appointmentMemberResolver;
+  @Mock private GuestSessionService guestSessionService;
   @Mock private UserRepository userRepository;
 
   private AppointmentMemberService appointmentMemberService;
@@ -38,7 +42,11 @@ class AppointmentMemberServiceTest {
   void setUp() {
     appointmentMemberService =
         new AppointmentMemberService(
-            appointmentMemberRepository, appointmentMemberResolver, userRepository);
+            appointmentMemberRepository,
+            appointmentMemberResolver,
+            guestSessionService,
+            userRepository,
+            Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
   @Test
@@ -51,7 +59,9 @@ class AppointmentMemberServiceTest {
     User host = user(HOST_USER_ID, "방장", "https://example.com/host.png");
     User member = user(MEMBER_USER_ID, "참여자", "https://example.com/member.png");
     given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null)).willReturn(hostMember);
-    given(appointmentMemberRepository.findByAppointmentIdOrderByJoinedAtAscIdAsc(APPOINTMENT_ID))
+    given(
+            appointmentMemberRepository.findByAppointmentIdAndLeftAtIsNullOrderByJoinedAtAscIdAsc(
+                APPOINTMENT_ID))
         .willReturn(List.of(hostMember, userMember, guestMember));
     given(userRepository.findAllById(List.of(HOST_USER_ID, MEMBER_USER_ID)))
         .willReturn(List.of(host, member));
@@ -78,7 +88,9 @@ class AppointmentMemberServiceTest {
     AppointmentMember guestMember = guestMember(3L, "철수", NOW.plusSeconds(20));
     given(appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_TOKEN))
         .willReturn(guestMember);
-    given(appointmentMemberRepository.findByAppointmentIdOrderByJoinedAtAscIdAsc(APPOINTMENT_ID))
+    given(
+            appointmentMemberRepository.findByAppointmentIdAndLeftAtIsNullOrderByJoinedAtAscIdAsc(
+                APPOINTMENT_ID))
         .willReturn(List.of(guestMember));
     given(userRepository.findAllById(List.of())).willReturn(List.of());
 
@@ -106,12 +118,53 @@ class AppointmentMemberServiceTest {
     AuthUser authUser = new AuthUser(HOST_USER_ID);
     AppointmentMember hostMember = userMember(1L, HOST_USER_ID, AppointmentMemberRole.HOST, NOW);
     given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null)).willReturn(hostMember);
-    given(appointmentMemberRepository.findByAppointmentIdOrderByJoinedAtAscIdAsc(APPOINTMENT_ID))
+    given(
+            appointmentMemberRepository.findByAppointmentIdAndLeftAtIsNullOrderByJoinedAtAscIdAsc(
+                APPOINTMENT_ID))
         .willReturn(List.of(hostMember));
     given(userRepository.findAllById(List.of(HOST_USER_ID))).willReturn(List.of());
 
     assertThatThrownBy(() -> appointmentMemberService.findAll(APPOINTMENT_ID, authUser, null))
         .isInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  void leaveMarksUserMemberAsLeft() {
+    AuthUser authUser = new AuthUser(MEMBER_USER_ID);
+    AppointmentMember member =
+        userMember(2L, MEMBER_USER_ID, AppointmentMemberRole.MEMBER, NOW.minusSeconds(10));
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null)).willReturn(member);
+
+    boolean guestLeft = appointmentMemberService.leave(APPOINTMENT_ID, authUser, null);
+
+    assertThat(guestLeft).isFalse();
+    assertThat(member.getLeftAt()).isEqualTo(NOW);
+  }
+
+  @Test
+  void leaveRevokesGuestSessionAndMarksGuestMemberAsLeft() {
+    AppointmentMember guestMember = guestMember(3L, "철수", NOW.minusSeconds(10));
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_TOKEN))
+        .willReturn(guestMember);
+
+    boolean guestLeft = appointmentMemberService.leave(APPOINTMENT_ID, null, GUEST_TOKEN);
+
+    assertThat(guestLeft).isTrue();
+    assertThat(guestMember.getLeftAt()).isEqualTo(NOW);
+    verify(guestSessionService).revoke(GUEST_TOKEN);
+  }
+
+  @Test
+  void leaveThrowsBusinessExceptionWhenRequesterIsHost() {
+    AuthUser authUser = new AuthUser(HOST_USER_ID);
+    AppointmentMember hostMember =
+        userMember(1L, HOST_USER_ID, AppointmentMemberRole.HOST, NOW.minusSeconds(10));
+    given(appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null)).willReturn(hostMember);
+
+    assertThatThrownBy(() -> appointmentMemberService.leave(APPOINTMENT_ID, authUser, null))
+        .isInstanceOf(BusinessException.class)
+        .extracting("errorCode")
+        .isEqualTo(ErrorCode.APPOINTMENT_HOST_CANNOT_LEAVE);
   }
 
   private AppointmentMember userMember(

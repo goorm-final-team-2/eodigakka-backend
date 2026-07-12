@@ -61,6 +61,10 @@ public class GuestSession {
     this.lastUsedAt = now;
   }
 
+  public void revoke(Instant now) {
+    this.revokedAt = now;
+  }
+
   public AppointmentMember getAppointmentMember() {
     return appointmentMember;
   }

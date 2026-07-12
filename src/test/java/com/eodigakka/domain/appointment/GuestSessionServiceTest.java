@@ -142,6 +142,23 @@ class GuestSessionServiceTest {
         .isEqualTo(ErrorCode.GUEST_SESSION_INVALID);
   }
 
+  @Test
+  void revokeMarksGuestSessionAsRevoked() {
+    AppointmentMember appointmentMember = guestMember(APPOINTMENT_ID);
+    GuestSession guestSession =
+        GuestSession.create(
+            appointmentMember,
+            MessageDigestSupport.sha256Hex(SESSION_TOKEN),
+            NOW.plusSeconds(3600),
+            NOW);
+    given(guestSessionRepository.findByTokenHash(MessageDigestSupport.sha256Hex(SESSION_TOKEN)))
+        .willReturn(Optional.of(guestSession));
+
+    guestSessionService.revoke(SESSION_TOKEN);
+
+    assertThat(guestSession.isValid(NOW.plusSeconds(1))).isFalse();
+  }
+
   private AppointmentMember guestMember(Long appointmentId) {
     AppointmentMember appointmentMember =
         AppointmentMember.createGuest(
