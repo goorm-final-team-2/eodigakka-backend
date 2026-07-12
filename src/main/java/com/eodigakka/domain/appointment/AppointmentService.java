@@ -191,7 +191,7 @@ public class AppointmentService {
   public void delete(Long appointmentId, Long userId) {
     appointmentAccessValidator.validateHost(appointmentId, userId);
     Appointment appointment = getAppointment(appointmentId);
-    appointment.validatePlanning();
+    appointment.validateDeletable();
     appointmentRepository.delete(appointment);
   }
 
