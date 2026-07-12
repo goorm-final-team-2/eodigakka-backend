@@ -41,7 +41,9 @@ class AppointmentMemberResolverTest {
     AuthUser authUser = new AuthUser(USER_ID);
     AppointmentMember appointmentMember =
         AppointmentMember.createMember(APPOINTMENT_ID, USER_ID, JOINED_AT);
-    given(appointmentMemberRepository.findByAppointmentIdAndUserId(APPOINTMENT_ID, USER_ID))
+    given(
+            appointmentMemberRepository.findByAppointmentIdAndUserIdAndLeftAtIsNull(
+                APPOINTMENT_ID, USER_ID))
         .willReturn(Optional.of(appointmentMember));
 
     AppointmentMember result =
@@ -67,7 +69,9 @@ class AppointmentMemberResolverTest {
   @Test
   void resolveThrowsBusinessExceptionWhenAuthUserHasNotJoinedAppointment() {
     AuthUser authUser = new AuthUser(USER_ID);
-    given(appointmentMemberRepository.findByAppointmentIdAndUserId(APPOINTMENT_ID, USER_ID))
+    given(
+            appointmentMemberRepository.findByAppointmentIdAndUserIdAndLeftAtIsNull(
+                APPOINTMENT_ID, USER_ID))
         .willReturn(Optional.empty());
 
     assertThatThrownBy(() -> appointmentMemberResolver.resolve(APPOINTMENT_ID, authUser, null))
@@ -82,6 +86,21 @@ class AppointmentMemberResolverTest {
     assertThatThrownBy(
             () -> appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_SESSION_TOKEN))
         .isInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  void resolveThrowsBusinessExceptionWhenGuestMemberHadLeftAppointment() {
+    AppointmentMember appointmentMember =
+        AppointmentMember.createGuest(APPOINTMENT_ID, "guest", "legacy-token-hash", JOINED_AT);
+    appointmentMember.leave(JOINED_AT.plusSeconds(60));
+    given(guestSessionService.resolve(APPOINTMENT_ID, GUEST_SESSION_TOKEN))
+        .willReturn(appointmentMember);
+
+    assertThatThrownBy(
+            () -> appointmentMemberResolver.resolve(APPOINTMENT_ID, null, GUEST_SESSION_TOKEN))
+        .isInstanceOf(BusinessException.class)
+        .extracting("errorCode")
+        .isEqualTo(ErrorCode.APPOINTMENT_MEMBER_NOT_FOUND);
   }
 
   @Test
